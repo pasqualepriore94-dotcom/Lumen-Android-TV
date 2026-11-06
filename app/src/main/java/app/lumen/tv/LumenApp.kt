@@ -37,14 +37,17 @@ class LumenApp : Application(), ImageLoaderFactory {
 
     /** Titoli della playlist caricata, usati per abbinarli al catalogo. */
     @Volatile var playlist: List<PlaylistItem> = emptyList()
-        set(value) {
-            field = value
-            playlistIndex = PlaylistIndex(value)
-        }
+        private set
 
     /** Indice per abbinare i titoli del catalogo alla playlist. */
     @Volatile var playlistIndex: PlaylistIndex = PlaylistIndex(emptyList())
         private set
+
+    /** Da chiamare fuori dal thread principale: l'indice di una playlist grande richiede qualche secondo. */
+    fun setPlaylist(items: List<PlaylistItem>, index: PlaylistIndex) {
+        playlistIndex = index
+        playlist = items
+    }
 
     /** Le immagini restano leggere: poca memoria, cache su disco limitata, colori a 16 bit dove possibile. */
     override fun newImageLoader(): ImageLoader = ImageLoader.Builder(this)

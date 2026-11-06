@@ -16,6 +16,7 @@ import app.lumen.tv.LumenApp
 import app.lumen.tv.R
 import app.lumen.tv.data.AuthRepository
 import app.lumen.tv.data.MediaKind
+import app.lumen.tv.data.PlaylistIndex
 import app.lumen.tv.data.PlaylistItem
 import app.lumen.tv.data.PlaylistRepository
 import app.lumen.tv.data.Prefs
@@ -24,7 +25,10 @@ import app.lumen.tv.data.TitleCleaner
 import coil.load
 import java.util.Locale
 import app.lumen.tv.data.Updater
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -117,22 +121,44 @@ class HomeActivity : ComponentActivity() {
         progress.visibility = View.VISIBLE
         message.visibility = View.GONE
         lifecycleScope.launch {
-            if (catalog.isEmpty()) catalog = app.tmdb.catalog()
-            val items = if (url.isBlank()) emptyList() else try {
-                repository.load(url)
+            // Prima il catalogo, subito visibile; la playlist si aggiunge appena è pronta.
+            if (catalog.isEmpty()) catalog = withTimeoutOrNull(20_000) { app.tmdb.catalog() }.orEmpty()
+            if (url.isBlank()) app.setPlaylist(emptyList(), PlaylistIndex(emptyList()))
+            playlistRows = rowsOf(app.playlist)
+            showFirst()
+            if (url.isBlank()) {
+                progress.visibility = View.GONE
+                return@launch
+            }
+            if (catalog.isNotEmpty()) {
+                progress.visibility = View.GONE
+                Toast.makeText(this@HomeActivity, "Carico la playlist…", Toast.LENGTH_SHORT).show()
+            }
+            val items = try {
+                withContext(Dispatchers.Default) {
+                    val list = repository.load(url)
+                    app.setPlaylist(list, PlaylistIndex(list))
+                    list
+                }
             } catch (e: Exception) {
                 Toast.makeText(this@HomeActivity, "Non riesco a caricare la playlist", Toast.LENGTH_LONG).show()
                 emptyList()
             }
-            app.playlist = items
-            playlistRows = items.groupBy { it.group }.map { (group, list) -> Row(group, list.take(MAX_CARDS_PER_ROW)) }
             progress.visibility = View.GONE
-            loaded = true
-            val first = tabs.keys.first()
-            show(null, first)
-            first.requestFocus()
+            playlistRows = withContext(Dispatchers.Default) { rowsOf(items) }
+            currentTab?.let { show(currentKind, it, keepFocus = true) } ?: showFirst()
             loadGuide(items)
         }
+    }
+
+    private fun rowsOf(items: List<PlaylistItem>) =
+        items.groupBy { it.group }.map { (group, list) -> Row(group, list.take(MAX_CARDS_PER_ROW)) }
+
+    private fun showFirst() {
+        loaded = true
+        val first = tabs.keys.first()
+        show(null, first)
+        first.requestFocus()
     }
 
     private fun loadGuide(items: List<PlaylistItem>) {

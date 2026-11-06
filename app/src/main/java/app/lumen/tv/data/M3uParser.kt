@@ -67,6 +67,7 @@ object M3uParser {
     }
 
     private val vodWords = listOf("film", "movie", "cinema", "serie", "series", "vod", "stagion", "season", "anime", "documentar", "saga")
+    private val qualitySuffix = Regex("""\b(F?HD|UHD|4K|SD)\s*$""", RegexOption.IGNORE_CASE)
     private val liveWords = Regex("""\b(live|diretta|dirette|tv|canali|canale|channel|channels|sport|news|radio|24/7|rai|mediaset|sky|dazn|eventi|ppv)\b""")
 
     /**
@@ -95,7 +96,7 @@ object M3uParser {
         if (hasTvgId) score -= 2
         if (parsed.isEpisode) score += 3
         if (parsed.year != null) score += 1
-        if (Regex("""\b(F?HD|UHD|4K|SD)\s*$""", RegexOption.IGNORE_CASE).containsMatchIn(name) && !parsed.isEpisode && parsed.year == null) score -= 1
+        if (qualitySuffix.containsMatchIn(name) && !parsed.isEpisode && parsed.year == null) score -= 1
 
         return when {
             score <= 0 -> MediaKind.LIVE
@@ -116,6 +117,10 @@ object TitleCleaner {
     private val year = Regex("""[(\[]?\b((?:19|20)\d{2})\b[)\]]?""")
     private val quality = Regex("""\b(4k|uhd|fhd|hd|sd|hdr|1080p|720p|2160p|ita|eng|sub|subita|multi|dual|h\.?264|h\.?265|x264|x265|hevc|web[- ]?dl|webrip|bluray|bdrip)\b""", RegexOption.IGNORE_CASE)
     private val brackets = Regex("""[\[(][^\])]*[\])]""")
+    private val separators = Regex("""[._]""")
+    private val spaces = Regex("""\s{2,}""")
+    private val nonAlnum = Regex("""[^\p{L}\p{Nd}]""")
+    private val marks = Regex("""\p{M}""")
     private val articles = Regex("""^(the|a|an|il|lo|la|i|gli|le|l|un|uno|una|le|der|die|das|el|los|las)\s+""")
 
     /** Titolo, anno, stagione ed episodio da un nome di playlist (stesse regole dell'app iPhone). */
@@ -133,8 +138,8 @@ object TitleCleaner {
             y = m.groupValues[1]
             t = t.removeRange(m.range)
         }
-        t = t.replace(quality, " ").replace(brackets, " ").replace(Regex("""[._]"""), " ")
-            .replace(Regex("""\s{2,}"""), " ").trim(' ', '-', '–', '|', ':')
+        t = t.replace(quality, " ").replace(brackets, " ").replace(separators, " ")
+            .replace(spaces, " ").trim(' ', '-', '–', '|', ':')
         return ParsedTitle(t, y, season, episode)
     }
 
@@ -144,12 +149,12 @@ object TitleCleaner {
     fun key(title: String): String =
         java.text.Normalizer.normalize(title, java.text.Normalizer.Form.NFD)
             .lowercase()
-            .replace(Regex("""[^\p{L}\p{Nd}]"""), "")
+            .replace(nonAlnum, "")
 
     /** Varianti confrontabili: con e senza articolo iniziale, "&" come "e"/"and", senza sottotitolo. */
     fun keys(title: String): Set<String> {
         val base = java.text.Normalizer.normalize(title, java.text.Normalizer.Form.NFD)
-            .replace(Regex("""\p{M}"""), "").lowercase().replace("'", " ").replace("’", " ")
+            .replace(marks, "").lowercase().replace("'", " ").replace("’", " ")
         val forms = linkedSetOf(base, base.replace(articles, ""), base.replace("&", " e "), base.replace("&", " and "))
         return forms.map(::key).filter { it.length >= 2 }.toSet()
     }

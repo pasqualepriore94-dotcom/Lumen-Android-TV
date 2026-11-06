@@ -85,6 +85,10 @@ class Epg(context: Context, private val http: OkHttpClient) {
             "sei" to "6", "sette" to "7", "otto" to "8", "nove" to "9", "one" to "1", "two" to "2", "three" to "3",
         )
         private val countryPrefix = Regex("""^\s*(\|[^|]{1,6}\||\[[^\]]{1,8}]|[a-z]{2,3}\s*[:|]\s+|[a-z]{2,3}\s+-\s+)""")
+        private val marks = Regex("""\p{M}""")
+        private val domain = Regex("""\.(it|uk|us|de|fr|es|com|tv)$""")
+        private val nonAlnumRun = Regex("""[^\p{L}\p{Nd}]+""")
+        private val nonAlnum = Regex("""[^\p{L}\p{Nd}]""")
         private val noise = Regex("""\b(hd|fhd|uhd|4k|sd|hevc|h265|h264|backup|bk|alt|vip|ita|it)\b""")
 
         /**
@@ -92,12 +96,12 @@ class Epg(context: Context, private val http: OkHttpClient) {
          * del tvg-id (".it") e con i numeri in cifre ("Rai Uno" = "Rai 1"). "+1" resta: è un canale diverso.
          */
         fun normalize(name: String): String {
-            var t = Normalizer.normalize(name, Normalizer.Form.NFD).replace(Regex("""\p{M}"""), "").lowercase()
-            t = t.replace(countryPrefix, "").replace(Regex("""\.(it|uk|us|de|fr|es|com|tv)$"""), "")
+            var t = Normalizer.normalize(name, Normalizer.Form.NFD).replace(marks, "").lowercase()
+            t = t.replace(countryPrefix, "").replace(domain, "")
             t = t.replace("+1", " plus1 ").replace("+2", " plus2 ")
-            t = t.split(Regex("""[^\p{L}\p{Nd}]+""")).joinToString(" ") { numberWords[it] ?: it }
-            val cleaned = t.replace(noise, " ").replace(Regex("""[^\p{L}\p{Nd}]"""), "")
-            return cleaned.ifEmpty { t.replace(Regex("""[^\p{L}\p{Nd}]"""), "") }
+            t = t.split(nonAlnumRun).joinToString(" ") { numberWords[it] ?: it }
+            val cleaned = t.replace(noise, " ").replace(nonAlnum, "")
+            return cleaned.ifEmpty { t.replace(nonAlnum, "") }
         }
 
         /** Legge l'XMLTV abbinando i canali prima per tvg-id e poi per nome. Chiave del risultato: URL del canale. */
