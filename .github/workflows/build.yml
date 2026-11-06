@@ -79,3 +79,6 @@ jobs:
           printf '{"versionCode":%s,"versionName":"%s","url":"%s/public/lumen/android-tv/Lumen-TV.apk?v=%s"}' \
             "$GITHUB_RUN_NUMBER" "$NAME" "$BASE" "$GITHUB_RUN_NUMBER" > version.json
           upload version.json version.json application/json
+          echo
+          echo "Controllo pubblico version.json: $(curl -s "$BASE/public/lumen/android-tv/version.json?t=$GITHUB_RUN_ID")"
+          echo "Controllo pubblico APK: $(curl -sIL -o /dev/null -w '%{http_code} %{size_download} %{content_type}' "$BASE/public/lumen/android-tv/Lumen-TV.apk?v=$GITHUB_RUN_NUMBER")"
