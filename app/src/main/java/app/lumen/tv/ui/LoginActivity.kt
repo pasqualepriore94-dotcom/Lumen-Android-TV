@@ -16,6 +16,8 @@ import app.lumen.tv.data.Updater
 import kotlinx.coroutines.launch
 
 class LoginActivity : ComponentActivity() {
+    private val updater by lazy { Updater(this, (application as LumenApp).http) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
@@ -62,11 +64,10 @@ class LoginActivity : ComponentActivity() {
                 }
             }
         }
+    }
 
-        // Gli aggiornamenti si possono installare anche prima di accedere.
-        val updater = Updater(this, app.http)
-        lifecycleScope.launch {
-            runCatching { updater.check() }.getOrNull()?.let { promptUpdate(it, updater) }
-        }
+    override fun onResume() {
+        super.onResume()
+        checkForUpdate(updater)
     }
 }

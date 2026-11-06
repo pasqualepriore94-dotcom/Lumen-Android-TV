@@ -13,9 +13,24 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+private var updateDialogOpen = false
+private var lastCheck = 0L
+
+/** Controlla gli aggiornamenti a ogni ritorno nell'app (al massimo ogni 30 secondi). */
+fun ComponentActivity.checkForUpdate(updater: Updater) {
+    val now = System.currentTimeMillis()
+    if (updateDialogOpen || now - lastCheck < 30_000) return
+    lastCheck = now
+    lifecycleScope.launch {
+        runCatching { updater.check() }.getOrNull()?.let { promptUpdate(it, updater) }
+    }
+}
+
 fun ComponentActivity.promptUpdate(info: UpdateInfo, updater: Updater) {
-    if (isFinishing) return
+    if (isFinishing || updateDialogOpen) return
+    updateDialogOpen = true
     AlertDialog.Builder(this)
+        .setOnDismissListener { updateDialogOpen = false }
         .setTitle("Aggiornamento disponibile")
         .setMessage("È disponibile Lumen ${info.versionName}. Vuoi installarlo ora?")
         .setPositiveButton("Aggiorna") { _, _ -> runUpdate(info, updater) }

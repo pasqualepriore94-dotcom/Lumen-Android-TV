@@ -23,6 +23,8 @@ import app.lumen.tv.data.Updater
 import kotlinx.coroutines.launch
 
 class HomeActivity : ComponentActivity() {
+    private val updater by lazy { Updater(this, (application as LumenApp).http) }
+
     private lateinit var app: LumenApp
     private lateinit var prefs: Prefs
     private lateinit var repository: PlaylistRepository
@@ -64,14 +66,11 @@ class HomeActivity : ComponentActivity() {
                 finish()
             }
         }
-        val updater = Updater(this, app.http)
-        lifecycleScope.launch {
-            runCatching { updater.check() }.getOrNull()?.let { promptUpdate(it, updater) }
-        }
     }
 
     override fun onResume() {
         super.onResume()
+        checkForUpdate(updater)
         if (loadedUrl != prefs.playlistUrl) load()
     }
 
