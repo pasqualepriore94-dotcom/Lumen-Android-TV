@@ -66,5 +66,48 @@ class M3uParserTest {
         assertEquals(0L, Epg.parseTime("bad"))
     }
 
-    @Test fun normalizesChannelNames() = assertEquals(Epg.normalize("Rai 1"), Epg.normalize("RAI 1 HD"))
+    @Test fun normalizesChannelNames() {
+        assertEquals(Epg.normalize("Rai 1"), Epg.normalize("RAI 1 HD"))
+        assertEquals(Epg.normalize("Rai 1"), Epg.normalize("IT: Rai Uno"))
+        assertEquals(Epg.normalize("Rai 1"), Epg.normalize("Rai1.it"))
+        assert(Epg.normalize("Rai 1") != Epg.normalize("Rai 1 +1"))
+        assert(Epg.normalize("Italia 1") != Epg.normalize("Rai 1"))
+    }
+
+    @Test fun cinemaChannelsAreLive() {
+        val list = M3uParser.parse("""
+            #EXTINF:-1 tvg-id="skycinemauno.it" group-title="Cinema",Sky Cinema Uno HD
+            http://h:8080/user/pass/1234
+            #EXTINF:-1 group-title="Film",Rai Movie
+            http://h/live/user/pass/55.ts
+            #EXTINF:-1 group-title="Film Azione",Die Hard (1988)
+            http://h:8080/movie/user/pass/77.mkv
+            #EXTINF:-1 group-title="Serie TV",Dark S01E02
+            http://h:8080/series/user/pass/88.mp4
+            #EXTINF:-1 group-title="Canali Cinema",Cine Sony
+            http://h/stream/cinesony.m3u8
+        """.trimIndent().reader().buffered())
+        assertEquals(listOf(MediaKind.LIVE, MediaKind.LIVE, MediaKind.MOVIE, MediaKind.SERIES, MediaKind.LIVE), list.map { it.kind })
+    }
+
+    @Test fun matchesCatalogTitlesTolerantly() {
+        val list = M3uParser.parse("""
+            #EXTINF:-1 group-title="Film",IT | Il Signore degli Anelli - La Compagnia dell'Anello (2001) FHD
+            http://h/movie/u/p/1.mkv
+            #EXTINF:-1 group-title="Film",The Batman 2022
+            http://h/movie/u/p/2.mkv
+            #EXTINF:-1 group-title="Film",Dune Parte Due [2024]
+            http://h/movie/u/p/3.mkv
+            #EXTINF:-1 group-title="Serie",Dark S01E02
+            http://h/series/u/p/5.mp4
+            #EXTINF:-1 group-title="Serie",Dark S01E01
+            http://h/series/u/p/4.mp4
+        """.trimIndent().reader().buffered())
+        val index = PlaylistIndex(list)
+        assertEquals("http://h/movie/u/p/1.mkv", index.find(listOf("Il Signore degli Anelli: La compagnia dell'anello"), "2001", MediaKind.MOVIE)?.url)
+        assertEquals("http://h/movie/u/p/2.mkv", index.find(listOf("Batman"), "2022", MediaKind.MOVIE)?.url ?: index.find(listOf("The Batman"), "2022", MediaKind.MOVIE)?.url)
+        assertEquals("http://h/movie/u/p/3.mkv", index.find(listOf("Dune - Parte due"), "2024", MediaKind.MOVIE)?.url)
+        assertEquals("http://h/series/u/p/4.mp4", index.find(listOf("Dark"), "2017", MediaKind.SERIES)?.url)
+        assertNull(index.find(listOf("Dune"), "2021", MediaKind.MOVIE))
+    }
 }

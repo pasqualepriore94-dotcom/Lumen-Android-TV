@@ -80,19 +80,38 @@ class Epg(context: Context, private val http: OkHttpClient) {
         private const val WINDOW_PAST_MS = 2L * 60 * 60 * 1000
         private const val WINDOW_FUTURE_MS = 18L * 60 * 60 * 1000
 
-        fun normalize(name: String): String =
-            Normalizer.normalize(name, Normalizer.Form.NFD)
-                .lowercase()
-                .replace(Regex("""\b(hd|fhd|uhd|4k|sd|it|ita|italia|\+1)\b"""), "")
-                .replace(Regex("""[^\p{L}\p{Nd}]"""), "")
+        private val numberWords = mapOf(
+            "uno" to "1", "due" to "2", "tre" to "3", "quattro" to "4", "cinque" to "5",
+            "sei" to "6", "sette" to "7", "otto" to "8", "nove" to "9", "one" to "1", "two" to "2", "three" to "3",
+        )
+        private val countryPrefix = Regex("""^\s*(\|[^|]{1,6}\||\[[^\]]{1,8}]|[a-z]{2,3}\s*[:|]\s+|[a-z]{2,3}\s+-\s+)""")
+        private val noise = Regex("""\b(hd|fhd|uhd|4k|sd|hevc|h265|h264|backup|bk|alt|vip|ita|it)\b""")
+
+        /**
+         * Nome confrontabile di un canale: senza prefisso del paese ("IT:"), qualità ("HD"), suffissi
+         * del tvg-id (".it") e con i numeri in cifre ("Rai Uno" = "Rai 1"). "+1" resta: è un canale diverso.
+         */
+        fun normalize(name: String): String {
+            var t = Normalizer.normalize(name, Normalizer.Form.NFD).replace(Regex("""\p{M}"""), "").lowercase()
+            t = t.replace(countryPrefix, "").replace(Regex("""\.(it|uk|us|de|fr|es|com|tv)$"""), "")
+            t = t.replace("+1", " plus1 ").replace("+2", " plus2 ")
+            t = t.split(Regex("""[^\p{L}\p{Nd}]+""")).joinToString(" ") { numberWords[it] ?: it }
+            val cleaned = t.replace(noise, " ").replace(Regex("""[^\p{L}\p{Nd}]"""), "")
+            return cleaned.ifEmpty { t.replace(Regex("""[^\p{L}\p{Nd}]"""), "") }
+        }
 
         /** Legge l'XMLTV abbinando i canali prima per tvg-id e poi per nome. Chiave del risultato: URL del canale. */
         fun parse(input: InputStream, channels: List<PlaylistItem>, now: Long): Map<String, List<Programme>> {
             val byId = HashMap<String, MutableList<String>>()
             val byName = HashMap<String, MutableList<String>>()
             for (c in channels) {
-                c.tvgId?.let { byId.getOrPut(it.lowercase()) { ArrayList() }.add(c.url) }
-                byName.getOrPut(normalize(c.name)) { ArrayList() }.add(c.url)
+                c.tvgId?.let {
+                    byId.getOrPut(it.lowercase()) { ArrayList() }.add(c.url)
+                    byName.getOrPut(normalize(it)) { ArrayList() }.add(c.url)
+                }
+                for (n in listOfNotNull(c.name, c.tvgName).map(::normalize).filter { it.isNotEmpty() }.toSet()) {
+                    byName.getOrPut(n) { ArrayList() }.add(c.url)
+                }
             }
             val buffered = BufferedInputStream(input, 64 * 1024)
             buffered.mark(2)
@@ -120,7 +139,9 @@ class Epg(context: Context, private val http: OkHttpClient) {
                     XmlPullParser.START_TAG -> when (parser.name) {
                         "channel" -> {
                             channelId = parser.getAttributeValue(null, "id")
-                            channelId?.let { id -> byId[id.lowercase()]?.let { channelUrls[id] = it } }
+                            channelId?.let { id ->
+                                (byId[id.lowercase()] ?: byName[normalize(id)])?.let { channelUrls[id] = it }
+                            }
                         }
                         "display-name" -> if (channelId != null) field = "display-name"
                         "programme" -> {

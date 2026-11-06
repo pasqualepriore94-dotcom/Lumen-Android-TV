@@ -25,6 +25,7 @@
         <activity android:name=".ui.LoginActivity" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".ui.PairActivity" />
         <activity android:name=".ui.GuideActivity" />
+        <activity android:name=".ui.SearchActivity" android:windowSoftInputMode="stateVisible|adjustNothing" />
         <activity android:name=".ui.SettingsActivity" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".ui.HomeActivity" />
         <activity android:name=".ui.DetailActivity" />

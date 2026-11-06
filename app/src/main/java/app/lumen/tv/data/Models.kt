@@ -10,6 +10,7 @@ data class PlaylistItem(
     val kind: MediaKind,
     val info: TmdbInfo? = null,
     val tvgId: String? = null,
+    val tvgName: String? = null,
 )
 
 data class Row(val title: String, val items: List<PlaylistItem>)

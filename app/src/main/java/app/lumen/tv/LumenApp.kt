@@ -8,6 +8,7 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import app.lumen.tv.data.Epg
 import app.lumen.tv.data.Library
+import app.lumen.tv.data.PlaylistIndex
 import app.lumen.tv.data.PlaylistItem
 import app.lumen.tv.data.Prefs
 import app.lumen.tv.data.TmdbClient
@@ -36,6 +37,14 @@ class LumenApp : Application(), ImageLoaderFactory {
 
     /** Titoli della playlist caricata, usati per abbinarli al catalogo. */
     @Volatile var playlist: List<PlaylistItem> = emptyList()
+        set(value) {
+            field = value
+            playlistIndex = PlaylistIndex(value)
+        }
+
+    /** Indice per abbinare i titoli del catalogo alla playlist. */
+    @Volatile var playlistIndex: PlaylistIndex = PlaylistIndex(emptyList())
+        private set
 
     /** Le immagini restano leggere: poca memoria, cache su disco limitata, colori a 16 bit dove possibile. */
     override fun newImageLoader(): ImageLoader = ImageLoader.Builder(this)

@@ -87,7 +87,7 @@ class DetailActivity : ComponentActivity() {
                 ),
             )
         } else {
-            lifecycleScope.launch { app.tmdb.lookup(name)?.let(::show) }
+            lifecycleScope.launch { app.tmdb.lookup(name, kind)?.let(::show) }
         }
     }
 
@@ -121,7 +121,7 @@ class DetailActivity : ComponentActivity() {
     private fun findSource() {
         lifecycleScope.launch {
             source = withContext(Dispatchers.Default) {
-                TitleCleaner.findInPlaylist(titles, year, kind, app.playlist)
+                app.playlistIndex.find(titles, year, kind)
             }?.url
             refreshButtons()
         }

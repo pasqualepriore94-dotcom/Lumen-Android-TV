@@ -61,6 +61,9 @@ class HomeActivity : ComponentActivity() {
             findViewById<Button>(R.id.tabLive) to MediaKind.LIVE,
         )
         tabs.forEach { (button, kind) -> button.setOnClickListener { show(kind, button) } }
+        findViewById<Button>(R.id.search).setOnClickListener {
+            startActivity(Intent(this, SearchActivity::class.java))
+        }
         findViewById<Button>(R.id.guide).setOnClickListener {
             startActivity(Intent(this, GuideActivity::class.java))
         }

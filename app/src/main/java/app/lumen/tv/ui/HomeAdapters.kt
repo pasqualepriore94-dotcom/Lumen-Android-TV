@@ -97,7 +97,7 @@ class CardAdapter(
             holder.image.load(item.logo)
         } else if (item.kind != MediaKind.LIVE) {
             holder.lookup = scope.launch {
-                tmdb.lookup(item.name)?.poster?.let { holder.image.load(it) }
+                tmdb.lookup(item.name, item.kind)?.poster?.let { holder.image.load(it) }
             }
         }
         bindDetails(holder, item)

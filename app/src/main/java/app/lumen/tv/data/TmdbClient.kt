@@ -53,18 +53,56 @@ class TmdbClient(private val http: OkHttpClient, lowRam: Boolean, private val pr
         }
     }
 
-    suspend fun lookup(name: String): TmdbInfo? {
+    /** Scheda TMDB per un nome di playlist; con il tipo noto cerca prima tra film o serie, come l'app iPhone. */
+    suspend fun lookup(name: String, kind: MediaKind? = null): TmdbInfo? {
         ensureKey()
-        if (!isConfigured) return null
+        if (!isConfigured || kind == MediaKind.LIVE) return null
         val (title, year) = TitleCleaner.clean(name)
-        if (title.isBlank()) return null
-        val key = "$title|$year"
+        if (title.length < 2) return null
+        val key = "$kind|$title|$year"
         cache.get(key)?.let { return it.info }
         val info = gate.withPermit {
-            withContext(Dispatchers.IO) { runCatching { search(title, year) }.getOrNull() }
+            withContext(Dispatchers.IO) { runCatching { searchTyped(title, year, kind) ?: search(title, year) }.getOrNull() }
         }
         cache.put(key, Entry(info))
         return info
+    }
+
+    private fun searchTyped(title: String, year: String?, kind: MediaKind?): TmdbInfo? {
+        val path = when (kind) {
+            MediaKind.MOVIE -> "search/movie"
+            MediaKind.SERIES -> "search/tv"
+            else -> return null
+        }
+        val yearParam = if (kind == MediaKind.MOVIE) "year" else "first_air_date_year"
+        val attempts = listOfNotNull(year?.let { mapOf("query" to title, yearParam to it) }, mapOf("query" to title))
+        for (params in attempts) {
+            val results = request(path, params + ("include_adult" to "false"))?.optJSONArray("results") ?: continue
+            if (results.length() > 0) return parse(results.getJSONObject(0))
+        }
+        return null
+    }
+
+    /** Ricerca libera nel catalogo (film e serie). */
+    suspend fun searchCatalog(query: String): List<PlaylistItem> {
+        ensureKey()
+        if (!isConfigured || query.isBlank()) return emptyList()
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val results = request("search/multi", mapOf("query" to query, "include_adult" to "false"))
+                    ?.optJSONArray("results") ?: return@runCatching emptyList()
+                (0 until results.length()).mapNotNull { i ->
+                    val json = results.getJSONObject(i)
+                    val kind = when (json.optString("media_type")) {
+                        "movie" -> MediaKind.MOVIE
+                        "tv" -> MediaKind.SERIES
+                        else -> null
+                    } ?: return@mapNotNull null
+                    val info = parse(json)
+                    if (info.title.isBlank()) null else PlaylistItem(info.title, "", "Catalogo", info.poster, kind, info)
+                }
+            }.getOrDefault(emptyList())
+        }
     }
 
     private fun request(path: String, params: Map<String, String>): JSONObject? {
