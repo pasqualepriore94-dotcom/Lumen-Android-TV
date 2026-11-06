@@ -6,6 +6,8 @@ import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
+import app.lumen.tv.data.Epg
+import app.lumen.tv.data.Library
 import app.lumen.tv.data.PlaylistItem
 import app.lumen.tv.data.Prefs
 import app.lumen.tv.data.TmdbClient
@@ -25,6 +27,12 @@ class LumenApp : Application(), ImageLoaderFactory {
     }
 
     val tmdb: TmdbClient by lazy { TmdbClient(http, isLowRam, Prefs(this)) }
+
+    val library: Library by lazy { Library(this) }
+    val epg: Epg by lazy { Epg(this, http) }
+
+    /** Titolo in riproduzione: serve al lettore per Continua a guardare e per cambiare canale. */
+    @Volatile var playing: PlaylistItem? = null
 
     /** Titoli della playlist caricata, usati per abbinarli al catalogo. */
     @Volatile var playlist: List<PlaylistItem> = emptyList()

@@ -50,4 +50,21 @@ class M3uParserTest {
         assertNull(TitleCleaner.findInPlaylist(listOf("Inception"), "1999", MediaKind.MOVIE, items))
         assertNull(TitleCleaner.findInPlaylist(listOf("Inception"), null, MediaKind.SERIES, items))
     }
+
+    @Test fun readsTvgIdAndGuideUrl() {
+        val list = M3uParser.parse("#EXTINF:-1 tvg-id=\"rai1.it\" group-title=\"TV\",Rai 1 HD\nhttp://h/live/1.ts".reader().buffered())
+        assertEquals("rai1.it", list[0].tvgId)
+        assertEquals("http://e/g.xml.gz", M3uParser.epgUrl("#EXTM3U url-tvg=\"http://e/g.xml.gz,http://e/b.xml\""))
+        assertEquals("http://e/x.xml", M3uParser.epgUrl("#EXTM3U x-tvg-url=\"http://e/x.xml\""))
+        assertNull(M3uParser.epgUrl("#EXTINF:-1,Canale"))
+    }
+
+    @Test fun parsesXmltvTimes() {
+        assertEquals(Epg.parseTime("20261106170000 +0000"), Epg.parseTime("20261106180000 +0100"))
+        assertEquals(Epg.parseTime("20261106170000"), Epg.parseTime("20261106180000 +0100"))
+        assertEquals(1_793_984_400_000L, Epg.parseTime("20261106170000 +0000"))
+        assertEquals(0L, Epg.parseTime("bad"))
+    }
+
+    @Test fun normalizesChannelNames() = assertEquals(Epg.normalize("Rai 1"), Epg.normalize("RAI 1 HD"))
 }

@@ -3,5 +3,13 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="match_parent" android:background="@android:color/black" android:keepScreenOn="true">
     <androidx.media3.ui.PlayerView android:id="@+id/playerView" android:layout_width="match_parent" android:layout_height="match_parent" android:focusable="true" app:show_buffering="when_playing"/>
+    <LinearLayout android:id="@+id/liveInfo" android:layout_width="560dp" android:layout_height="wrap_content" android:layout_gravity="top|start" android:layout_margin="40dp"
+        android:background="@drawable/overlay_bg" android:orientation="vertical" android:padding="20dp" android:visibility="gone">
+        <TextView android:id="@+id/liveChannel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/text" android:textSize="22sp" android:textStyle="bold"/>
+        <TextView android:id="@+id/liveNow" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:textColor="@color/text" android:textSize="17sp"/>
+        <ProgressBar android:id="@+id/liveProgress" style="@android:style/Widget.ProgressBar.Horizontal" android:layout_width="match_parent" android:layout_height="4dp" android:layout_marginTop="8dp" android:progressDrawable="@drawable/progress_bar"/>
+        <TextView android:id="@+id/liveNext" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:textColor="@color/muted" android:textSize="15sp"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="▲ ▼ cambia canale" android:textColor="@color/muted" android:textSize="13sp"/>
+    </LinearLayout>
     <TextView android:id="@+id/error" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center" android:gravity="center" android:padding="48dp" android:textColor="@color/text" android:textSize="18sp" android:visibility="gone"/>
 </FrameLayout>

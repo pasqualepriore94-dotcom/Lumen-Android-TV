@@ -37,10 +37,12 @@ class AuthRepository(private val http: OkHttpClient, private val prefs: Prefs) {
     data class Pairing(val code: String, val secret: String, val url: String, val expiresInSeconds: Int)
 
     /** Accesso con il telefono: la TV ottiene un codice da mostrare come QR. */
-    suspend fun startPairing(): Pairing = withContext(Dispatchers.IO) {
+    suspend fun startPairing(forPlaylist: Boolean = false): Pairing = withContext(Dispatchers.IO) {
+        val body = JSONObject().put("purpose", if (forPlaylist) "playlist" else "login").toString()
         val request = Request.Builder()
             .url("${BuildConfig.AUTH_URL}/pair/start")
-            .post("{}".toRequestBody("application/json".toMediaType()))
+            .post(body.toRequestBody("application/json".toMediaType()))
+            .apply { if (forPlaylist) header("Authorization", "Bearer ${prefs.accessToken}") }
             .build()
         http.newCall(request).execute().use { response ->
             val json = runCatching { JSONObject(response.body?.string().orEmpty()) }.getOrNull()
@@ -62,7 +64,12 @@ class AuthRepository(private val http: OkHttpClient, private val prefs: Prefs) {
             when (response.code) {
                 200 -> {
                     val json = JSONObject(response.body?.string().orEmpty())
-                    prefs.accessToken = json.getString("token")
+                    if (json.has("playlist")) {
+                        prefs.playlistUrl = json.getString("playlist")
+                        json.optString("epg").takeIf { it.isNotBlank() }?.let { prefs.epgUrl = it }
+                    } else {
+                        prefs.accessToken = json.getString("token")
+                    }
                     PairState.APPROVED
                 }
                 404, 410 -> PairState.EXPIRED

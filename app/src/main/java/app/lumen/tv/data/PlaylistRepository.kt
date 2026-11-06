@@ -24,6 +24,11 @@ class PlaylistRepository(context: Context, private val http: OkHttpClient, priva
         cache.bufferedReader().use { M3uParser.parse(it) }
     }
 
+    /** Guida TV indicata nella playlist salvata, se presente. */
+    fun epgUrl(): String? = runCatching {
+        cache.bufferedReader().use { it.readLine() }?.let(M3uParser::epgUrl)
+    }.getOrNull()
+
     private fun download(url: String) {
         val request = Request.Builder().url(url).header("User-Agent", "Lumen-TV").build()
         http.newCall(request).execute().use { response ->

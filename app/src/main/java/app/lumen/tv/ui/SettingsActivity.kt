@@ -16,6 +16,17 @@ import app.lumen.tv.data.AuthRepository
 import app.lumen.tv.data.Prefs
 
 class SettingsActivity : ComponentActivity() {
+    private var fieldRefs: Pair<EditText, Prefs>? = null
+
+    /** Dopo l'invio dal telefono i campi mostrano i link ricevuti. */
+    override fun onResume() {
+        super.onResume()
+        fieldRefs?.let { (field, prefs) ->
+            field.setText(prefs.playlistUrl)
+            findViewById<EditText>(R.id.epgUrl).setText(prefs.epgUrl)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
@@ -25,6 +36,9 @@ class SettingsActivity : ComponentActivity() {
         val field = findViewById<EditText>(R.id.playlistUrl)
         val message = findViewById<TextView>(R.id.message)
         field.setText(prefs.playlistUrl)
+        fieldRefs = field to prefs
+        val epgField = findViewById<EditText>(R.id.epgUrl)
+        epgField.setText(prefs.epgUrl)
 
         findViewById<Button>(R.id.save).setOnClickListener {
             val url = field.text.toString().trim()
@@ -32,8 +46,21 @@ class SettingsActivity : ComponentActivity() {
                 message.text = "Inserisci un indirizzo che inizia con http:// o https://, oppure lascia vuoto"
                 return@setOnClickListener
             }
+            val epg = epgField.text.toString().trim()
+            if (epg.isNotEmpty() && !epg.startsWith("http://") && !epg.startsWith("https://")) {
+                message.text = "L'indirizzo della guida TV deve iniziare con http:// o https://, oppure lascia vuoto"
+                return@setOnClickListener
+            }
             prefs.playlistUrl = url
+            if (epg != prefs.epgUrl) {
+                prefs.epgUrl = epg
+                app.epg.invalidate()
+            }
             finish()
+        }
+
+        findViewById<Button>(R.id.fromPhone).setOnClickListener {
+            startActivity(Intent(this, PairActivity::class.java).putExtra(PairActivity.EXTRA_PLAYLIST, true))
         }
 
         val updater = Updater(this, app.http)

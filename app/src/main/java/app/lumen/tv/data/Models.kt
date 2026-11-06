@@ -9,6 +9,7 @@ data class PlaylistItem(
     val logo: String?,
     val kind: MediaKind,
     val info: TmdbInfo? = null,
+    val tvgId: String? = null,
 )
 
 data class Row(val title: String, val items: List<PlaylistItem>)
@@ -22,3 +23,9 @@ data class TmdbInfo(
     val year: String?,
     val rating: Double?,
 )
+
+/** Un programma della guida TV. Orari in millisecondi. */
+data class Programme(val start: Long, val stop: Long, val title: String, val description: String) {
+    fun isOn(now: Long) = now in start until stop
+    fun progress(now: Long): Int = if (stop <= start) 0 else ((now - start) * 100 / (stop - start)).toInt().coerceIn(0, 100)
+}

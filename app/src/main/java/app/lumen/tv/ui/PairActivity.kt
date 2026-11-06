@@ -9,6 +9,7 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -32,6 +33,7 @@ class PairActivity : ComponentActivity() {
     private lateinit var code: TextView
     private lateinit var message: TextView
     private lateinit var progress: ProgressBar
+    private var forPlaylist = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,6 +43,13 @@ class PairActivity : ComponentActivity() {
         code = findViewById(R.id.code)
         message = findViewById(R.id.message)
         progress = findViewById(R.id.progress)
+        forPlaylist = intent.getBooleanExtra(EXTRA_PLAYLIST, false)
+        if (forPlaylist) {
+            findViewById<TextView>(R.id.title).text = "Playlist dal telefono"
+            findViewById<TextView>(R.id.steps).text =
+                "1. Inquadra il codice QR con la fotocamera dell'iPhone.\n2. Incolla il link della playlist nella pagina che si apre.\n3. La TV la carica da sola."
+            findViewById<Button>(R.id.back).text = "Annulla"
+        }
         findViewById<Button>(R.id.back).apply {
             requestFocus()
             setOnClickListener { finish() }
@@ -55,7 +64,7 @@ class PairActivity : ComponentActivity() {
             qr.setImageDrawable(null)
             code.text = ""
             val pairing = try {
-                auth.startPairing()
+                auth.startPairing(forPlaylist)
             } catch (e: Exception) {
                 progress.visibility = View.GONE
                 message.text = "Non riesco a ottenere un codice: ${e.message.orEmpty()}\nRiprovo tra poco…"
@@ -66,13 +75,19 @@ class PairActivity : ComponentActivity() {
             qr.setImageBitmap(withContext(Dispatchers.Default) { qrBitmap(pairing.url, size) })
             progress.visibility = View.GONE
             code.text = pairing.code.chunked(3).joinToString(" ")
-            message.text = "In attesa dell'accesso dal telefono…"
+            message.text = if (forPlaylist) "In attesa del link dal telefono…" else "In attesa dell'accesso dal telefono…"
 
             val deadline = System.currentTimeMillis() + pairing.expiresInSeconds * 1000L
             var state = AuthRepository.PairState.PENDING
             while (state == AuthRepository.PairState.PENDING && System.currentTimeMillis() < deadline) {
                 delay(3_000)
                 state = runCatching { auth.pollPairing(pairing) }.getOrDefault(AuthRepository.PairState.PENDING)
+            }
+            if (state == AuthRepository.PairState.APPROVED && forPlaylist) {
+                (application as LumenApp).epg.invalidate()
+                Toast.makeText(this, "Playlist ricevuta", Toast.LENGTH_LONG).show()
+                finish()
+                return
             }
             if (state == AuthRepository.PairState.APPROVED) {
                 startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
@@ -81,6 +96,10 @@ class PairActivity : ComponentActivity() {
             }
             message.text = "Codice scaduto: ne genero uno nuovo…"
         }
+    }
+
+    companion object {
+        const val EXTRA_PLAYLIST = "playlist"
     }
 
     private fun qrBitmap(text: String, size: Int): Bitmap {

@@ -39,7 +39,16 @@ object M3uParser {
             ?: attrs["tvg-name"]?.takeIf { it.isNotBlank() }
             ?: url.substringAfterLast('/').substringBefore('?')
         val group = attrs["group-title"]?.takeIf { it.isNotBlank() } ?: extGroup?.takeIf { it.isNotBlank() } ?: "Altro"
-        return PlaylistItem(name, url, group, attrs["tvg-logo"]?.takeIf { it.isNotBlank() }, classify(name, url, group))
+        return PlaylistItem(name, url, group, attrs["tvg-logo"]?.takeIf { it.isNotBlank() }, classify(name, url, group),
+            tvgId = attrs["tvg-id"]?.trim()?.takeIf { it.isNotBlank() })
+    }
+
+    /** Indirizzo della guida TV indicato nell'intestazione #EXTM3U (url-tvg o x-tvg-url). */
+    fun epgUrl(header: String): String? {
+        if (!header.trimStart('\uFEFF', ' ').startsWith("#EXTM3U", ignoreCase = true)) return null
+        val attrs = attribute.findAll(header).associate { it.groupValues[1].lowercase() to it.groupValues[2] }
+        return (attrs["url-tvg"] ?: attrs["x-tvg-url"])
+            ?.split(',')?.map { it.trim() }?.firstOrNull { it.startsWith("http") }
     }
 
     /** Il titolo è dopo la prima virgola fuori dalle virgolette. */

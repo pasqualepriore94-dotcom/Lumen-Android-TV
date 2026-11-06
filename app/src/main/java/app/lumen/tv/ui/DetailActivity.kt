@@ -7,6 +7,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import app.lumen.tv.LumenApp
@@ -33,6 +34,9 @@ class DetailActivity : ComponentActivity() {
     private lateinit var backdrop: ImageView
     private lateinit var play: Button
     private lateinit var restart: Button
+    private lateinit var myList: Button
+    private var info: TmdbInfo? = null
+    private var logo: String? = null
     private lateinit var kind: MediaKind
     private var source: String? = null
     private var titles: List<String> = emptyList()
@@ -55,6 +59,13 @@ class DetailActivity : ComponentActivity() {
         backdrop = findViewById(R.id.backdrop)
         play = findViewById(R.id.play)
         restart = findViewById(R.id.restart)
+        myList = findViewById(R.id.myList)
+        logo = intent.getStringExtra(EXTRA_LOGO)
+        myList.setOnClickListener {
+            val added = app.library.toggleMyList(currentItem())
+            Toast.makeText(this, if (added) "Aggiunto a La mia lista" else "Rimosso da La mia lista", Toast.LENGTH_SHORT).show()
+            refreshButtons()
+        }
 
         title.text = TitleCleaner.clean(name).first.ifBlank { name }
         meta.text = group
@@ -86,7 +97,11 @@ class DetailActivity : ComponentActivity() {
         if (source == null && titles.isNotEmpty()) findSource()
     }
 
+    /** Il titolo come si salva in La mia lista e Continua a guardare. */
+    private fun currentItem() = PlaylistItem(name, source.orEmpty(), group, info?.poster ?: logo, kind, info)
+
     private fun show(info: TmdbInfo) {
+        this.info = info
         title.text = info.title
         overview.text = info.overview
         meta.text = listOfNotNull(
@@ -95,6 +110,7 @@ class DetailActivity : ComponentActivity() {
             group,
         ).joinToString("  ·  ")
         (info.backdrop ?: info.poster)?.let { backdrop.load(it) }
+        refreshButtons()
         if (source == null) {
             titles = listOfNotNull(info.title, info.originalTitle)
             year = info.year
@@ -113,16 +129,18 @@ class DetailActivity : ComponentActivity() {
 
     private fun refreshButtons() {
         val url = source
-        val saved = url != null && Prefs(this).position(url) > 0
+        val entry = app.library.progressFor(currentItem())
+        val saved = url != null && (entry != null || Prefs(this).position(url) > 0)
         notice.visibility = if (url == null) View.VISIBLE else View.GONE
         if (url == null) {
             val hasPlaylist = Prefs(this).playlistUrl.isNotBlank()
             notice.text = if (hasPlaylist) "Questo titolo non è nella tua playlist." else "Per guardarlo serve una playlist."
             play.text = if (hasPlaylist) "Cambia playlist" else "Aggiungi playlist"
         } else {
-            play.text = if (saved) "Riprendi" else "Riproduci"
+            play.text = if (saved) "Riprendi" + (entry?.let { " (${it.percent}%)" } ?: "") else "Riproduci"
         }
         restart.visibility = if (saved) View.VISIBLE else View.GONE
+        myList.text = if (app.library.inMyList(currentItem())) "✓ La mia lista" else "+ La mia lista"
     }
 
     private fun onPlay(fromStart: Boolean) {
@@ -130,7 +148,7 @@ class DetailActivity : ComponentActivity() {
         if (url == null) {
             startActivity(Intent(this, SettingsActivity::class.java))
         } else {
-            startActivity(PlayerActivity.intent(this, name, url, live = false, fromStart = fromStart))
+            startActivity(PlayerActivity.intent(this, app, currentItem(), url, fromStart = fromStart))
         }
     }
 

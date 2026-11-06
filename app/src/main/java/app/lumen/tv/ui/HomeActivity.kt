@@ -20,6 +20,7 @@ import app.lumen.tv.data.PlaylistRepository
 import app.lumen.tv.data.Prefs
 import app.lumen.tv.data.Row
 import app.lumen.tv.data.Updater
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class HomeActivity : ComponentActivity() {
@@ -35,6 +36,11 @@ class HomeActivity : ComponentActivity() {
     private var catalog: List<Row> = emptyList()
     private var playlistRows: List<Row> = emptyList()
     private var loadedUrl: String? = null
+    private var loaded = false
+    private var currentKind: MediaKind? = null
+    private var currentTab: Button? = null
+    private var shownLibraryVersion = -1
+    private var shownEpgVersion = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,6 +61,9 @@ class HomeActivity : ComponentActivity() {
             findViewById<Button>(R.id.tabLive) to MediaKind.LIVE,
         )
         tabs.forEach { (button, kind) -> button.setOnClickListener { show(kind, button) } }
+        findViewById<Button>(R.id.guide).setOnClickListener {
+            startActivity(Intent(this, GuideActivity::class.java))
+        }
         findViewById<Button>(R.id.settings).setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
@@ -66,12 +75,22 @@ class HomeActivity : ComponentActivity() {
                 finish()
             }
         }
+        // Aggiorna ogni minuto il programma in onda sulle schede dei canali.
+        lifecycleScope.launch {
+            while (true) {
+                delay(60_000)
+                refreshCards()
+            }
+        }
     }
 
     override fun onResume() {
         super.onResume()
         checkForUpdate(updater)
-        if (loadedUrl != prefs.playlistUrl) load()
+        when {
+            loadedUrl != prefs.playlistUrl -> load()
+            loaded && shownLibraryVersion != app.library.version -> currentTab?.let { show(currentKind, it, keepFocus = true) }
+        }
     }
 
     private fun load() {
@@ -90,24 +109,57 @@ class HomeActivity : ComponentActivity() {
             app.playlist = items
             playlistRows = items.groupBy { it.group }.map { (group, list) -> Row(group, list.take(MAX_CARDS_PER_ROW)) }
             progress.visibility = View.GONE
+            loaded = true
             val first = tabs.keys.first()
             show(null, first)
             first.requestFocus()
+            loadGuide(items)
         }
     }
 
-    private fun show(kind: MediaKind?, selected: Button) {
+    private fun loadGuide(items: List<PlaylistItem>) {
+        val channels = items.filter { it.kind == MediaKind.LIVE }
+        if (channels.isEmpty()) return
+        lifecycleScope.launch {
+            app.epg.refresh(prefs.epgUrl.ifBlank { repository.epgUrl() }, channels)
+            refreshCards()
+        }
+    }
+
+    private fun refreshCards() {
+        if (shownEpgVersion == app.epg.version && !app.epg.hasData) return
+        shownEpgVersion = app.epg.version
+        rows.adapter?.notifyItemRangeChanged(0, rows.adapter?.itemCount ?: 0)
+    }
+
+    private fun libraryRows(): List<Row> {
+        val library = app.library
+        val progressRow = library.continueWatching().map { it.item }
+        return listOfNotNull(
+            progressRow.takeIf { it.isNotEmpty() }?.let { Row("Continua a guardare", it) },
+            library.myList().takeIf { it.isNotEmpty() }?.let { Row("La mia lista", it) },
+        )
+    }
+
+    private fun show(kind: MediaKind?, selected: Button, keepFocus: Boolean = false) {
+        currentKind = kind
+        currentTab = selected
+        shownLibraryVersion = app.library.version
         tabs.keys.forEach { it.isSelected = it == selected }
-        val visible = (catalog + playlistRows).mapNotNull { row ->
+        val visible = (libraryRows() + catalog + playlistRows).mapNotNull { row ->
             val items = if (kind == null) row.items else row.items.filter { it.kind == kind }
             if (items.isEmpty()) null else Row(row.title, items)
         }
-        rows.adapter = RowsAdapter(visible) { list -> CardAdapter(list, lifecycleScope, app.tmdb, ::open) }
+        val hadFocus = keepFocus && rows.hasFocus()
+        rows.adapter = RowsAdapter(visible) { list ->
+            CardAdapter(list, lifecycleScope, app.tmdb, app.epg, { app.library.progressFor(it)?.percent }, ::open)
+        }
+        if (hadFocus) rows.post { rows.requestFocus() }
         if (visible.isEmpty()) showMessage(emptyText(kind)) else message.visibility = View.GONE
     }
 
     private fun emptyText(kind: MediaKind?): String = when {
-        kind == MediaKind.LIVE -> "Le dirette arrivano dalla playlist: puoi aggiungerla in Impostazioni."
+        kind == MediaKind.LIVE -> "Le dirette arrivano dalla playlist: puoi aggiungerla in Impostazioni, anche dal telefono."
         !app.tmdb.isConfigured -> "Il catalogo non è disponibile: non trovo la chiave TMDB nella configurazione di Lumen. Controlla la connessione e riapri l'app."
         else -> "Non riesco a caricare il catalogo. Controlla la connessione e riapri l'app."
     }
@@ -119,7 +171,7 @@ class HomeActivity : ComponentActivity() {
 
     private fun open(item: PlaylistItem) {
         if (item.kind == MediaKind.LIVE) {
-            startActivity(PlayerActivity.intent(this, item.name, item.url, live = true, fromStart = true))
+            startActivity(PlayerActivity.intent(this, app, item, item.url, fromStart = true))
         } else {
             startActivity(DetailActivity.intent(this, item))
         }
