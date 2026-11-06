@@ -17,6 +17,31 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
+      - name: Verifica configurazione e account (senza mostrare chiavi)
+        continue-on-error: true
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, urllib.parse, urllib.error
+          base = "https://sicpnokpgjqwnhzlznvm.supabase.co"
+          def get(url):
+              try:
+                  with urllib.request.urlopen(url, timeout=20) as r:
+                      return r.status, r.read()
+              except urllib.error.HTTPError as e:
+                  return e.code, b""
+          code, body = get(base + "/storage/v1/object/public/lumen/app-config.json")
+          key = ""
+          if code == 200:
+              for p in json.loads(body).get("providers", []):
+                  if p.get("type") == "tmdb":
+                      key = p.get("options", {}).get("tmdbKey", "")
+          print("configurazione pubblica:", code, "- chiave TMDB presente:", bool(key))
+          if key and not key.startswith("eyJ"):
+              q = urllib.parse.urlencode({"api_key": key, "language": "it-IT"})
+              print("catalogo TMDB:", get("https://api.themoviedb.org/3/trending/all/week?" + q)[0])
+          print("server account:", get(base + "/functions/v1/lumen-auth/health")[0])
+          print("aggiornamenti:", get(base + "/storage/v1/object/public/lumen/android-tv/version.json")[0])
+          PY
       - name: Test e compilazione
         env:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
@@ -36,10 +61,11 @@ jobs:
             exit 0
           fi
           NAME=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          AUTH=(-H "apikey: $SERVICE_KEY")
+          case "$SERVICE_KEY" in eyJ*) AUTH+=(-H "Authorization: Bearer $SERVICE_KEY");; esac
           upload() {
-            curl --fail-with-body -sS -X POST "$BASE/lumen/android-tv/$2" \
-              -H "Authorization: Bearer $SERVICE_KEY" -H "x-upsert: true" \
-              -H "cache-control: max-age=60" -H "Content-Type: $3" --data-binary "@$1"
+            curl --fail-with-body -sS -X POST "$BASE/lumen/android-tv/$2" "${AUTH[@]}" \
+              -H "x-upsert: true" -H "cache-control: max-age=60" -H "Content-Type: $3" --data-binary "@$1"
           }
           upload app/build/outputs/apk/release/app-release.apk Lumen-TV.apk application/vnd.android.package-archive
           printf '{"versionCode":%s,"versionName":"%s","url":"%s/public/lumen/android-tv/Lumen-TV.apk?v=%s"}' \

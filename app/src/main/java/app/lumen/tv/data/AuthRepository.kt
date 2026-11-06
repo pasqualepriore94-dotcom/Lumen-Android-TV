@@ -10,7 +10,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
 
-/** Stessi account dell'app iPhone, tramite la funzione Supabase lumen-auth. */
+/** Account di Lumen tramite la funzione `lumen-auth`, gli stessi dell'app iPhone. */
 class AuthRepository(private val http: OkHttpClient, private val prefs: Prefs) {
     val isSignedIn: Boolean get() = prefs.accessToken.isNotBlank()
 
@@ -28,21 +28,25 @@ class AuthRepository(private val http: OkHttpClient, private val prefs: Prefs) {
                 throw IOException(json?.optString("error")?.ifBlank { null } ?: "Errore del server (${response.code})")
             }
             if (json?.optBoolean("mustChangePassword") == true) {
-                throw IOException("Devi prima cambiare la password dall'app iPhone.")
+                throw IOException("Devi prima cambiare la password dall'app Lumen su iPhone.")
             }
-            prefs.accessToken = json?.optString("token")?.ifBlank { null } ?: throw IOException("Risposta del server non valida")
+            prefs.accessToken = json?.getString("token") ?: throw IOException("Risposta del server non valida")
         }
     }
 
-    /** Falso solo se il server rifiuta la sessione: senza connessione l'accesso resta valido. */
-    suspend fun isSessionValid(): Boolean = withContext(Dispatchers.IO) {
+    /** Falso solo se il server rifiuta la sessione: senza connessione resta valida l'ultima. */
+    suspend fun verifySession(): Boolean = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("${BuildConfig.AUTH_URL}/me")
             .header("Authorization", "Bearer ${prefs.accessToken}")
             .build()
-        runCatching {
-            http.newCall(request).execute().use { it.code != 401 && it.code != 403 }
-        }.getOrDefault(true)
+        val code = runCatching { http.newCall(request).execute().use { it.code } }.getOrNull()
+        if (code == 401 || code == 403) {
+            signOut()
+            false
+        } else {
+            true
+        }
     }
 
     fun signOut() {
