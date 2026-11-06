@@ -60,6 +60,14 @@ jobs:
             echo "SUPABASE_SERVICE_KEY assente: pubblicazione saltata"
             exit 0
           fi
+          # Indica solo il tipo di chiave, mai il suo valore.
+          case "$SERVICE_KEY" in
+            eyJ*) KIND="JWT, ruolo: $(printf %s "$SERVICE_KEY" | cut -d. -f2 | tr '_-' '/+' | python3 -c "import sys,base64,json;s=sys.stdin.read().strip();print(json.loads(base64.b64decode(s+'='*(-len(s)%4))).get('role','?'))")" ;;
+            sb_secret_*) KIND="sb_secret" ;;
+            sb_publishable_*) KIND="sb_publishable" ;;
+            *) KIND="non riconosciuto" ;;
+          esac
+          echo "Tipo di SUPABASE_SERVICE_KEY: $KIND"
           NAME=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
           AUTH=(-H "apikey: $SERVICE_KEY")
           case "$SERVICE_KEY" in eyJ*) AUTH+=(-H "Authorization: Bearer $SERVICE_KEY");; esac
