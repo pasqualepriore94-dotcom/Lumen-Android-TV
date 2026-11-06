@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
@@ -19,7 +20,11 @@ import app.lumen.tv.data.PlaylistItem
 import app.lumen.tv.data.PlaylistRepository
 import app.lumen.tv.data.Prefs
 import app.lumen.tv.data.Row
+import app.lumen.tv.data.TitleCleaner
+import coil.load
+import java.util.Locale
 import app.lumen.tv.data.Updater
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -41,6 +46,12 @@ class HomeActivity : ComponentActivity() {
     private var currentTab: Button? = null
     private var shownLibraryVersion = -1
     private var shownEpgVersion = -1
+    private lateinit var heroImage: ImageView
+    private lateinit var heroTitle: TextView
+    private lateinit var heroMeta: TextView
+    private lateinit var heroOverview: TextView
+    private var heroJob: Job? = null
+    private var heroItem: PlaylistItem? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,6 +65,10 @@ class HomeActivity : ComponentActivity() {
         }
         progress = findViewById(R.id.progress)
         message = findViewById(R.id.message)
+        heroImage = findViewById(R.id.heroImage)
+        heroTitle = findViewById(R.id.heroTitle)
+        heroMeta = findViewById(R.id.heroMeta)
+        heroOverview = findViewById(R.id.heroOverview)
         tabs = linkedMapOf(
             findViewById<Button>(R.id.tabAll) to null,
             findViewById<Button>(R.id.tabMovies) to MediaKind.MOVIE,
@@ -61,13 +76,13 @@ class HomeActivity : ComponentActivity() {
             findViewById<Button>(R.id.tabLive) to MediaKind.LIVE,
         )
         tabs.forEach { (button, kind) -> button.setOnClickListener { show(kind, button) } }
-        findViewById<Button>(R.id.search).setOnClickListener {
+        findViewById<View>(R.id.search).setOnClickListener {
             startActivity(Intent(this, SearchActivity::class.java))
         }
-        findViewById<Button>(R.id.guide).setOnClickListener {
+        findViewById<View>(R.id.guide).setOnClickListener {
             startActivity(Intent(this, GuideActivity::class.java))
         }
-        findViewById<Button>(R.id.settings).setOnClickListener {
+        findViewById<View>(R.id.settings).setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
         val auth = AuthRepository(app.http, prefs)
@@ -155,10 +170,48 @@ class HomeActivity : ComponentActivity() {
         }
         val hadFocus = keepFocus && rows.hasFocus()
         rows.adapter = RowsAdapter(visible) { list ->
-            CardAdapter(list, lifecycleScope, app.tmdb, app.epg, { app.library.progressFor(it)?.percent }, ::open)
+            CardAdapter(list, lifecycleScope, app.tmdb, app.epg, { app.library.progressFor(it)?.percent }, ::open, ::updateHero)
         }
+        if (!hadFocus) visible.firstOrNull()?.items?.firstOrNull()?.let(::updateHero)
         if (hadFocus) rows.post { rows.requestFocus() }
         if (visible.isEmpty()) showMessage(emptyText(kind)) else message.visibility = View.GONE
+    }
+
+    /** Anteprima in alto: immagine, titolo, voto e trama del titolo selezionato (con un attimo di ritardo mentre si scorre). */
+    private fun updateHero(item: PlaylistItem) {
+        if (heroItem === item) return
+        heroItem = item
+        heroJob?.cancel()
+        heroJob = lifecycleScope.launch {
+            delay(220)
+            if (item.kind == MediaKind.LIVE) {
+                val now = app.epg.now(item)
+                setHero(item.name, listOfNotNull("In diretta", item.group).joinToString("  ·  "),
+                    now?.let { "${hhmm(it.start)} – ${hhmm(it.stop)}  ${it.title}\n${it.description}" }.orEmpty(), null)
+                return@launch
+            }
+            val info = item.info ?: app.tmdb.lookup(item.name, item.kind)
+            val meta = listOfNotNull(
+                info?.rating?.let { String.format(Locale.ITALY, "★ %.1f", it) },
+                info?.year,
+                if (item.kind == MediaKind.SERIES) "Serie" else "Film",
+                app.library.progressFor(item)?.let { "Visto al ${it.percent}%" },
+            ).joinToString("  ·  ")
+            setHero(info?.title ?: TitleCleaner.clean(item.name).first, meta, info?.overview.orEmpty(), info?.backdrop)
+        }
+    }
+
+    private fun setHero(title: String, meta: String, overview: String, image: String?) {
+        heroTitle.text = title
+        heroMeta.text = meta
+        heroOverview.text = overview
+        if (image == null) {
+            heroImage.animate().alpha(0f).setDuration(200).start()
+        } else {
+            heroImage.load(image) {
+                listener(onSuccess = { _, _ -> heroImage.animate().alpha(1f).setDuration(300).start() })
+            }
+        }
     }
 
     private fun emptyText(kind: MediaKind?): String = when {

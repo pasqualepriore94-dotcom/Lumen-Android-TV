@@ -58,6 +58,7 @@ class CardAdapter(
     private val epg: Epg,
     private val progressOf: (PlaylistItem) -> Int?,
     private val onClick: (PlaylistItem) -> Unit,
+    private val onFocus: (PlaylistItem) -> Unit = {},
 ) : RecyclerView.Adapter<CardAdapter.Holder>() {
 
     class Holder(view: View) : RecyclerView.ViewHolder(view) {
@@ -76,8 +77,12 @@ class CardAdapter(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
         val layout = if (viewType == CHANNEL) R.layout.item_channel else R.layout.item_card
         val view = LayoutInflater.from(parent.context).inflate(layout, parent, false)
-        view.scaleOnFocus(if (viewType == CHANNEL) 1.06f else 1.08f)
-        return Holder(view)
+        view.clipToOutline = true
+        val holder = Holder(view)
+        view.scaleOnFocus(if (viewType == CHANNEL) 1.06f else 1.1f) {
+            holder.bindingAdapterPosition.takeIf { it != RecyclerView.NO_POSITION }?.let { onFocus(items[it]) }
+        }
+        return holder
     }
 
     override fun getItemCount() = items.size
@@ -93,11 +98,19 @@ class CardAdapter(
         holder.lookup?.cancel()
         holder.image.dispose()
         holder.image.setImageDrawable(null)
-        if (item.logo != null) {
-            holder.image.load(item.logo)
+        holder.name.visibility = View.VISIBLE
+        // Sulle locandine il titolo è già nell'immagine: la scritta resta solo se l'immagine manca.
+        val hideName = item.kind != MediaKind.LIVE
+        fun load(url: String) = holder.image.load(url) {
+            crossfade(150)
+            listener(onSuccess = { _, _ -> if (hideName) holder.name.visibility = View.GONE })
+        }
+        if (item.info?.poster != null || (item.logo != null && item.kind == MediaKind.LIVE)) {
+            load(item.info?.poster ?: item.logo!!)
         } else if (item.kind != MediaKind.LIVE) {
             holder.lookup = scope.launch {
-                tmdb.lookup(item.name, item.kind)?.poster?.let { holder.image.load(it) }
+                val poster = tmdb.lookup(item.name, item.kind)?.poster ?: item.logo
+                poster?.let(::load)
             }
         }
         bindDetails(holder, item)

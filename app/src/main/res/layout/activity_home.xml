@@ -1,20 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="48dp" android:paddingEnd="48dp" android:paddingTop="24dp" android:paddingBottom="8dp">
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginEnd="28dp" android:text="Lumen" android:textColor="@color/accent" android:textSize="26sp" android:textStyle="bold"/>
-        <Button android:id="@+id/tabAll" style="@style/LumenButton" android:text="Tutti"/>
-        <Button android:id="@+id/tabMovies" style="@style/LumenButton" android:text="Film"/>
-        <Button android:id="@+id/tabSeries" style="@style/LumenButton" android:text="Serie"/>
-        <Button android:id="@+id/tabLive" style="@style/LumenButton" android:text="Dirette"/>
-        <Button android:id="@+id/guide" style="@style/LumenButton" android:text="Guida TV"/>
-        <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1"/>
-        <Button android:id="@+id/search" style="@style/LumenButton" android:text="Cerca"/>
-        <Button android:id="@+id/settings" style="@style/LumenButton" android:layout_marginEnd="0dp" android:text="Impostazioni"/>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+
+    <!-- Anteprima: immagine del titolo selezionato, sfumata verso sinistra e verso il basso. -->
+    <ImageView android:id="@+id/heroImage" android:layout_width="match_parent" android:layout_height="380dp" android:layout_gravity="top|end"
+        android:alpha="0" android:importantForAccessibility="no" android:scaleType="centerCrop"/>
+    <View android:layout_width="match_parent" android:layout_height="380dp" android:background="@drawable/hero_scrim_left"/>
+    <View android:layout_width="match_parent" android:layout_height="220dp" android:layout_marginTop="162dp" android:background="@drawable/hero_scrim_bottom"/>
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal"
+            android:paddingStart="48dp" android:paddingEnd="48dp" android:paddingTop="22dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginEnd="28dp" android:fontFamily="sans-serif-black"
+                android:letterSpacing="0.02" android:text="Lumen" android:textColor="@color/text" android:textSize="26sp"/>
+            <Button android:id="@+id/tabAll" style="@style/LumenTab" android:text="Home"/>
+            <Button android:id="@+id/tabMovies" style="@style/LumenTab" android:text="Film"/>
+            <Button android:id="@+id/tabSeries" style="@style/LumenTab" android:text="Serie"/>
+            <Button android:id="@+id/tabLive" style="@style/LumenTab" android:text="Dirette"/>
+            <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1"/>
+            <ImageView android:id="@+id/search" style="@style/LumenIconButton" android:contentDescription="Cerca" android:src="@drawable/ic_search"/>
+            <ImageView android:id="@+id/guide" style="@style/LumenIconButton" android:contentDescription="Guida TV" android:src="@drawable/ic_guide"/>
+            <ImageView android:id="@+id/settings" style="@style/LumenIconButton" android:contentDescription="Impostazioni" android:src="@drawable/ic_settings"/>
+        </LinearLayout>
+
+        <LinearLayout android:id="@+id/hero" android:layout_width="620dp" android:layout_height="196dp" android:orientation="vertical"
+            android:paddingStart="56dp" android:paddingTop="20dp">
+            <TextView android:id="@+id/heroTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:ellipsize="end"
+                android:fontFamily="sans-serif-black" android:maxLines="2" android:textColor="@color/text" android:textSize="36sp"/>
+            <TextView android:id="@+id/heroMeta" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp"
+                android:fontFamily="sans-serif-medium" android:textColor="@color/muted" android:textSize="15sp"/>
+            <TextView android:id="@+id/heroOverview" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp"
+                android:ellipsize="end" android:lineSpacingExtra="3dp" android:maxLines="3" android:textColor="#D9F5F6FA" android:textSize="15sp"/>
+        </LinearLayout>
+
+        <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+            <androidx.recyclerview.widget.RecyclerView android:id="@+id/rows" android:layout_width="match_parent" android:layout_height="match_parent"
+                android:clipToPadding="false" android:paddingBottom="40dp"/>
+            <ProgressBar android:id="@+id/progress" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center"
+                android:indeterminateTint="@color/accent"/>
+            <TextView android:id="@+id/message" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center"
+                android:gravity="center" android:padding="48dp" android:textColor="@color/muted" android:textSize="18sp" android:visibility="gone"/>
+        </FrameLayout>
     </LinearLayout>
-    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
-        <androidx.recyclerview.widget.RecyclerView android:id="@+id/rows" android:layout_width="match_parent" android:layout_height="match_parent" android:clipToPadding="false" android:paddingBottom="32dp"/>
-        <ProgressBar android:id="@+id/progress" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center"/>
-        <TextView android:id="@+id/message" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center" android:gravity="center" android:padding="48dp" android:textColor="@color/muted" android:textSize="18sp" android:visibility="gone"/>
-    </FrameLayout>
-</LinearLayout>
+</FrameLayout>

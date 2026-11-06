@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="112dp" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:layout_marginEnd="4dp"
+    android:focusable="true" android:gravity="center_horizontal" android:orientation="vertical">
+    <FrameLayout android:id="@+id/photoFrame" android:layout_width="84dp" android:layout_height="84dp" android:background="@drawable/avatar_bg" android:foreground="@drawable/avatar_focus">
+        <ImageView android:id="@+id/placeholder" android:layout_width="40dp" android:layout_height="40dp" android:layout_gravity="center" android:alpha="0.4"
+            android:importantForAccessibility="no" android:src="@drawable/ic_person" android:tint="@color/muted"/>
+        <ImageView android:id="@+id/photo" android:layout_width="match_parent" android:layout_height="match_parent" android:importantForAccessibility="no" android:scaleType="centerCrop"/>
+    </FrameLayout>
+    <TextView android:id="@+id/name" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:ellipsize="end"
+        android:fontFamily="sans-serif-medium" android:gravity="center" android:maxLines="1" android:textColor="@color/text" android:textSize="13sp"/>
+    <TextView android:id="@+id/role" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center"
+        android:maxLines="1" android:textColor="@color/muted" android:textSize="12sp"/>
+</LinearLayout>

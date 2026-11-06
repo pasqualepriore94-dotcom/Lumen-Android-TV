@@ -78,7 +78,7 @@ class TmdbClient(private val http: OkHttpClient, lowRam: Boolean, private val pr
         val attempts = listOfNotNull(year?.let { mapOf("query" to title, yearParam to it) }, mapOf("query" to title))
         for (params in attempts) {
             val results = request(path, params + ("include_adult" to "false"))?.optJSONArray("results") ?: continue
-            if (results.length() > 0) return parse(results.getJSONObject(0))
+            if (results.length() > 0) return parse(results.getJSONObject(0).put("media_type", if (kind == MediaKind.SERIES) "tv" else "movie"))
         }
         return null
     }
@@ -143,7 +143,53 @@ class TmdbClient(private val http: OkHttpClient, lowRam: Boolean, private val pr
         backdrop = image(found, "backdrop_path", "w1280"),
         year = date(found).take(4).ifBlank { null },
         rating = found.optDouble("vote_average").takeIf { !it.isNaN() && it > 0 },
+        tmdbId = found.optInt("id").takeIf { it > 0 },
+        series = found.optString("media_type") == "tv" || (!found.has("title") && found.has("name")),
     )
+
+    private val detailsCache = LruCache<String, TmdbDetails>(40)
+
+    /** Cast, generi, durata e regia (una sola richiesta con append_to_response). */
+    suspend fun details(info: TmdbInfo): TmdbDetails? {
+        val id = info.tmdbId ?: return null
+        ensureKey()
+        if (!isConfigured) return null
+        val key = "${info.series}|$id"
+        detailsCache.get(key)?.let { return it }
+        val result = withContext(Dispatchers.IO) {
+            runCatching {
+                val json = request((if (info.series) "tv/" else "movie/") + id, mapOf("append_to_response" to "credits"))
+                    ?: return@runCatching null
+                val genres = json.optJSONArray("genres")?.let { a -> (0 until a.length()).map { a.getJSONObject(it).optString("name") } }
+                    .orEmpty().filter { it.isNotBlank() }
+                val credits = json.optJSONObject("credits")
+                val castArray = credits?.optJSONArray("cast")
+                val cast = (0 until minOf(castArray?.length() ?: 0, 20)).map { i ->
+                    val c = castArray!!.getJSONObject(i)
+                    CastMember(c.optString("name"), c.optString("character"), image(c, "profile_path", "w185"))
+                }.filter { it.name.isNotBlank() }
+                val crew = credits?.optJSONArray("crew")
+                val director = (0 until (crew?.length() ?: 0)).map { crew!!.getJSONObject(it) }
+                    .filter { it.optString("job") == "Director" }.map { it.optString("name") }.distinct().take(2)
+                    .ifEmpty {
+                        json.optJSONArray("created_by")?.let { a -> (0 until a.length()).map { a.getJSONObject(it).optString("name") } }.orEmpty()
+                    }.filter { it.isNotBlank() }.joinToString(", ").ifBlank { null }
+                val runtime = json.optInt("runtime").takeIf { it > 0 }
+                    ?: json.optJSONArray("episode_run_time")?.let { if (it.length() > 0) it.optInt(0) else null }?.takeIf { it > 0 }
+                TmdbDetails(
+                    genres = genres,
+                    runtimeMinutes = runtime,
+                    seasons = json.optInt("number_of_seasons").takeIf { it > 0 },
+                    director = director,
+                    cast = cast,
+                    tagline = json.optString("tagline").ifBlank { null },
+                    overview = json.optString("overview").ifBlank { null },
+                )
+            }.getOrNull()
+        }
+        result?.let { detailsCache.put(key, it) }
+        return result
+    }
 
     private class Section(
         val title: String,

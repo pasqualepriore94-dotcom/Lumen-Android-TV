@@ -110,7 +110,8 @@ class Library(context: Context) {
                 json.put("info", JSONObject()
                     .put("title", info.title).put("originalTitle", info.originalTitle ?: "")
                     .put("overview", info.overview).put("poster", info.poster ?: "").put("backdrop", info.backdrop ?: "")
-                    .put("year", info.year ?: "").put("rating", info.rating ?: 0.0))
+                    .put("year", info.year ?: "").put("rating", info.rating ?: 0.0)
+                    .put("tmdbId", info.tmdbId ?: 0).put("series", info.series))
             }
             return json
         }
@@ -125,6 +126,8 @@ class Library(context: Context) {
                     backdrop = it.optString("backdrop").ifBlank { null },
                     year = it.optString("year").ifBlank { null },
                     rating = it.optDouble("rating").takeIf { r -> !r.isNaN() && r > 0 },
+                    tmdbId = it.optInt("tmdbId").takeIf { id -> id > 0 },
+                    series = it.optBoolean("series"),
                 )
             }
             val item = PlaylistItem(

@@ -23,6 +23,21 @@ data class TmdbInfo(
     val backdrop: String?,
     val year: String?,
     val rating: Double?,
+    val tmdbId: Int? = null,
+    val series: Boolean = false,
+)
+
+data class CastMember(val name: String, val character: String, val photo: String?)
+
+/** Dettagli completi di un titolo TMDB, caricati quando si apre la scheda. */
+data class TmdbDetails(
+    val genres: List<String>,
+    val runtimeMinutes: Int?,
+    val seasons: Int?,
+    val director: String?,
+    val cast: List<CastMember>,
+    val tagline: String?,
+    val overview: String?,
 )
 
 /** Un programma della guida TV. Orari in millisecondi. */
