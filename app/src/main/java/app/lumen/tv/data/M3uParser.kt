@@ -154,7 +154,6 @@ object TitleCleaner {
         return forms.map(::key).filter { it.length >= 2 }.toSet()
     }
 
-    private fun mainTitle(title: String) = title.split(':', ' - ', '–').first().trim()
 
     /** Cerca nella playlist il titolo del catalogo, tollerando titoli italiani o originali. */
     fun findInPlaylist(titles: List<String>, year: String?, kind: MediaKind, playlist: List<PlaylistItem>): PlaylistItem? =
