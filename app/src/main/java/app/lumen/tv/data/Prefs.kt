@@ -17,10 +17,6 @@ class Prefs(context: Context) {
         get() = sp.getString("tmdb_key", "").orEmpty()
         set(value) = sp.edit().putString("tmdb_key", value).apply()
 
-    var tmdbKey: String
-        get() = sp.getString("tmdb_key", "").orEmpty()
-        set(value) = sp.edit().putString("tmdb_key", value).apply()
-
     var playlistCachedFrom: String
         get() = sp.getString("playlist_cached_from", "").orEmpty()
         set(value) = sp.edit().putString("playlist_cached_from", value).apply()

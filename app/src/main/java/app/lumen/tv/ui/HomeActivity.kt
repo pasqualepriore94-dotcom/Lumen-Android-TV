@@ -14,12 +14,10 @@ import androidx.recyclerview.widget.RecyclerView
 import app.lumen.tv.LumenApp
 import app.lumen.tv.R
 import app.lumen.tv.data.AuthRepository
-import app.lumen.tv.data.AuthRepository
 import app.lumen.tv.data.MediaKind
 import app.lumen.tv.data.PlaylistItem
 import app.lumen.tv.data.PlaylistRepository
 import app.lumen.tv.data.Prefs
-import app.lumen.tv.data.RemoteConfig
 import app.lumen.tv.data.Row
 import app.lumen.tv.data.Updater
 import kotlinx.coroutines.launch
@@ -66,13 +64,6 @@ class HomeActivity : ComponentActivity() {
                 finish()
             }
         }
-        val auth = AuthRepository(app.http, prefs)
-        lifecycleScope.launch {
-            if (!auth.verifySession()) {
-                startActivity(Intent(this@HomeActivity, MainActivity::class.java))
-                finish()
-            }
-        }
         val updater = Updater(this, app.http)
         lifecycleScope.launch {
             runCatching { updater.check() }.getOrNull()?.let { promptUpdate(it, updater) }
@@ -90,10 +81,7 @@ class HomeActivity : ComponentActivity() {
         progress.visibility = View.VISIBLE
         message.visibility = View.GONE
         lifecycleScope.launch {
-            if (catalog.isEmpty()) {
-                RemoteConfig.tmdbKey(app.http, prefs)?.let { app.tmdb.apiKey = it }
-                catalog = app.tmdb.catalog()
-            }
+            if (catalog.isEmpty()) catalog = app.tmdb.catalog()
             val items = if (url.isBlank()) emptyList() else try {
                 repository.load(url)
             } catch (e: Exception) {
