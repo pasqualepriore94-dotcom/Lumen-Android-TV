@@ -2,7 +2,6 @@ package app.lumen.tv.ui
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
@@ -55,7 +54,6 @@ class SettingsActivity : ComponentActivity() {
         }
 
         findViewById<Button>(R.id.signOut).apply {
-            visibility = if (auth.isConfigured) View.VISIBLE else View.GONE
             setOnClickListener {
                 auth.signOut()
                 startActivity(Intent(this@SettingsActivity, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))

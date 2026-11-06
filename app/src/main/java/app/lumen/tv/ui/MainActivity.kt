@@ -14,7 +14,7 @@ class MainActivity : ComponentActivity() {
         val prefs = Prefs(this)
         val auth = AuthRepository((application as LumenApp).http, prefs)
         val next = when {
-            auth.isConfigured && !auth.isSignedIn -> LoginActivity::class.java
+            !auth.isSignedIn -> LoginActivity::class.java
             else -> HomeActivity::class.java
         }
         startActivity(Intent(this, next))

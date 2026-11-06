@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import app.lumen.tv.LumenApp
 import app.lumen.tv.R
+import app.lumen.tv.data.AuthRepository
 import app.lumen.tv.data.MediaKind
 import app.lumen.tv.data.PlaylistItem
 import app.lumen.tv.data.PlaylistRepository
@@ -54,6 +55,14 @@ class HomeActivity : ComponentActivity() {
         tabs.forEach { (button, kind) -> button.setOnClickListener { show(kind, button) } }
         findViewById<Button>(R.id.settings).setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
+        }
+        val auth = AuthRepository(app.http, prefs)
+        lifecycleScope.launch {
+            if (!auth.isSessionValid()) {
+                auth.signOut()
+                startActivity(Intent(this@HomeActivity, MainActivity::class.java))
+                finish()
+            }
         }
         val updater = Updater(this, app.http)
         lifecycleScope.launch {
@@ -100,7 +109,7 @@ class HomeActivity : ComponentActivity() {
 
     private fun emptyText(kind: MediaKind?): String = when {
         kind == MediaKind.LIVE -> "Le dirette arrivano dalla playlist: puoi aggiungerla in Impostazioni."
-        !app.tmdb.isConfigured -> "Il catalogo non è ancora attivo: a questa versione manca la chiave TMDB."
+        !app.tmdb.isConfigured -> "Il catalogo non è disponibile: non trovo la chiave TMDB nella configurazione di Lumen. Controlla la connessione e riapri l'app."
         else -> "Non riesco a caricare il catalogo. Controlla la connessione e riapri l'app."
     }
 

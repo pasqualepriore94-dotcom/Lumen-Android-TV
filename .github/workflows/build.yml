@@ -20,8 +20,6 @@ jobs:
       - name: Test e compilazione
         env:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: gradle --no-daemon testReleaseUnitTest assembleRelease
       - uses: actions/upload-artifact@v4
         with:

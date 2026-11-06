@@ -18,17 +18,17 @@ class LoginActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
         val auth = AuthRepository((application as LumenApp).http, Prefs(this))
-        val email = findViewById<EditText>(R.id.email)
+        val username = findViewById<EditText>(R.id.username)
         val password = findViewById<EditText>(R.id.password)
         val message = findViewById<TextView>(R.id.message)
         val button = findViewById<Button>(R.id.signIn)
-        email.requestFocus()
+        username.requestFocus()
         button.setOnClickListener {
             button.isEnabled = false
             message.text = "Accesso in corso…"
             lifecycleScope.launch {
                 try {
-                    auth.signIn(email.text.toString().trim(), password.text.toString())
+                    auth.signIn(username.text.toString(), password.text.toString())
                     startActivity(Intent(this@LoginActivity, MainActivity::class.java))
                     finish()
                 } catch (e: Exception) {

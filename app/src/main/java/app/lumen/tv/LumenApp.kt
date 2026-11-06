@@ -7,6 +7,7 @@ import coil.ImageLoaderFactory
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import app.lumen.tv.data.PlaylistItem
+import app.lumen.tv.data.Prefs
 import app.lumen.tv.data.TmdbClient
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -23,7 +24,7 @@ class LumenApp : Application(), ImageLoaderFactory {
         (getSystemService(ACTIVITY_SERVICE) as ActivityManager).isLowRamDevice
     }
 
-    val tmdb: TmdbClient by lazy { TmdbClient(http, isLowRam) }
+    val tmdb: TmdbClient by lazy { TmdbClient(http, isLowRam, Prefs(this)) }
 
     /** Titoli della playlist caricata, usati per abbinarli al catalogo. */
     @Volatile var playlist: List<PlaylistItem> = emptyList()

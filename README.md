@@ -12,8 +12,8 @@ Secret del repository:
 
 | Secret | Uso |
 | --- | --- |
-| `TMDB_API_KEY` | Catalogo, locandine e trame da TMDB |
 | `SUPABASE_SERVICE_KEY` | Pubblica APK e `version.json` nel bucket `lumen/android-tv` per gli aggiornamenti sulla TV |
-| `SUPABASE_URL`, `SUPABASE_ANON_KEY` | Accesso con account |
+
+La chiave TMDB arriva da `app-config.json`, lo stesso file dell'app iPhone. Gli account usano la funzione `lumen-auth`.
 
 APK per Downloader: `https://sicpnokpgjqwnhzlznvm.supabase.co/storage/v1/object/public/lumen/android-tv/Lumen-TV.apk`
