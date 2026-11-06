@@ -34,6 +34,43 @@ class AuthRepository(private val http: OkHttpClient, private val prefs: Prefs) {
         }
     }
 
+    data class Pairing(val code: String, val secret: String, val url: String, val expiresInSeconds: Int)
+
+    /** Accesso con il telefono: la TV ottiene un codice da mostrare come QR. */
+    suspend fun startPairing(): Pairing = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${BuildConfig.AUTH_URL}/pair/start")
+            .post("{}".toRequestBody("application/json".toMediaType()))
+            .build()
+        http.newCall(request).execute().use { response ->
+            val json = runCatching { JSONObject(response.body?.string().orEmpty()) }.getOrNull()
+            if (!response.isSuccessful || json == null) {
+                throw IOException(json?.optString("error")?.ifBlank { null } ?: "Errore del server (${response.code})")
+            }
+            Pairing(json.getString("code"), json.getString("secret"), json.getString("url"), json.optInt("expiresIn", 600))
+        }
+    }
+
+    enum class PairState { PENDING, APPROVED, EXPIRED }
+
+    /** Controlla se il telefono ha completato l'accesso; in quel caso salva la sessione. */
+    suspend fun pollPairing(pairing: Pairing): PairState = withContext(Dispatchers.IO) {
+        val body = JSONObject().put("code", pairing.code).put("secret", pairing.secret).toString()
+            .toRequestBody("application/json".toMediaType())
+        val request = Request.Builder().url("${BuildConfig.AUTH_URL}/pair/poll").post(body).build()
+        http.newCall(request).execute().use { response ->
+            when (response.code) {
+                200 -> {
+                    val json = JSONObject(response.body?.string().orEmpty())
+                    prefs.accessToken = json.getString("token")
+                    PairState.APPROVED
+                }
+                404, 410 -> PairState.EXPIRED
+                else -> PairState.PENDING
+            }
+        }
+    }
+
     /** Falso solo se il server rifiuta la sessione: senza connessione l'accesso resta valido. */
     suspend fun isSessionValid(): Boolean = withContext(Dispatchers.IO) {
         val request = Request.Builder()

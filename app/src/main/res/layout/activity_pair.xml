@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:gravity="center" android:orientation="horizontal" android:padding="48dp">
+    <FrameLayout android:layout_width="300dp" android:layout_height="300dp" android:layout_marginEnd="56dp" android:background="#FFFFFF" android:padding="14dp">
+        <ImageView android:id="@+id/qr" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="Codice QR per l'accesso" android:scaleType="fitCenter"/>
+        <ProgressBar android:id="@+id/progress" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center"/>
+    </FrameLayout>
+    <LinearLayout android:layout_width="460dp" android:layout_height="wrap_content" android:orientation="vertical">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Accedi con il telefono" android:textColor="@color/text" android:textSize="30sp" android:textStyle="bold"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:lineSpacingExtra="4dp"
+            android:text="1. Inquadra il codice QR con la fotocamera dell'iPhone.\n2. Accedi con il tuo account Lumen nella pagina che si apre.\n3. La TV si collega da sola." android:textColor="@color/muted" android:textSize="18sp"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="28dp" android:text="Codice" android:textColor="@color/muted" android:textSize="15sp"/>
+        <TextView android:id="@+id/code" android:layout_width="wrap_content" android:layout_height="wrap_content" android:letterSpacing="0.25" android:textColor="@color/text" android:textSize="44sp" android:textStyle="bold"/>
+        <TextView android:id="@+id/message" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:textColor="@color/muted" android:textSize="16sp"/>
+        <Button android:id="@+id/back" style="@style/LumenButton" android:layout_marginTop="24dp" android:text="Usa username e password"/>
+    </LinearLayout>
+</LinearLayout>

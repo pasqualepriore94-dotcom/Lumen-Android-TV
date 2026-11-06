@@ -6,6 +6,7 @@
     <EditText android:id="@+id/username" style="@style/LumenField" android:hint="Username" android:inputType="textVisiblePassword|textNoSuggestions" android:imeOptions="actionNext" android:importantForAutofill="no"/>
     <EditText android:id="@+id/password" style="@style/LumenField" android:hint="Password" android:inputType="textPassword|textNoSuggestions" android:imeOptions="actionDone" android:importantForAutofill="no"/>
     <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal">
+        <Button android:id="@+id/pair" style="@style/LumenButton" android:text="Accedi con il telefono"/>
         <Button android:id="@+id/signIn" style="@style/LumenButton" android:text="Accedi"/>
         <Button android:id="@+id/showPassword" style="@style/LumenButton" android:layout_marginEnd="0dp" android:text="Mostra password"/>
     </LinearLayout>

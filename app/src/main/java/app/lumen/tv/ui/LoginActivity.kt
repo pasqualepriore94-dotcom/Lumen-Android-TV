@@ -26,7 +26,11 @@ class LoginActivity : ComponentActivity() {
         val message = findViewById<TextView>(R.id.message)
         val button = findViewById<Button>(R.id.signIn)
         val toggle = findViewById<Button>(R.id.showPassword)
-        username.requestFocus()
+        val pair = findViewById<Button>(R.id.pair)
+        pair.requestFocus()
+        pair.setOnClickListener {
+            startActivity(Intent(this, PairActivity::class.java))
+        }
 
         var visible = false
         toggle.setOnClickListener {

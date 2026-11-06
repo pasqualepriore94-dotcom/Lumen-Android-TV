@@ -40,6 +40,15 @@ jobs:
               q = urllib.parse.urlencode({"api_key": key, "language": "it-IT"})
               print("catalogo TMDB:", get("https://api.themoviedb.org/3/trending/all/week?" + q)[0])
           print("server account:", get(base + "/functions/v1/lumen-auth/health")[0])
+          import urllib.request as u
+          try:
+              req = u.Request(base + "/functions/v1/lumen-auth/pair/start", data=b"{}", headers={"Content-Type": "application/json"})
+              with u.urlopen(req, timeout=20) as r:
+                  d = json.loads(r.read())
+              print("abbinamento TV:", r.status, "- codice di", len(d["code"]), "caratteri - pagina:", d["url"].split("?")[0])
+              print("pagina per il telefono:", get(d["url"].split("?")[0])[0])
+          except Exception as e:
+              print("abbinamento TV: errore", e)
           print("aggiornamenti:", get(base + "/storage/v1/object/public/lumen/android-tv/version.json")[0])
           PY
       - name: Test e compilazione
