@@ -3,35 +3,42 @@
     android:layout_width="match_parent" android:layout_height="match_parent">
     <ImageView android:id="@+id/backdrop" android:layout_width="match_parent" android:layout_height="match_parent" android:importantForAccessibility="no" android:scaleType="centerCrop"/>
     <View android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/hero_scrim_left"/>
-    <View android:layout_width="match_parent" android:layout_height="300dp" android:layout_gravity="bottom" android:background="@drawable/hero_scrim_bottom"/>
+    <View android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/detail_scrim_bottom"/>
 
-    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:paddingTop="48dp">
-        <LinearLayout android:layout_width="640dp" android:layout_height="0dp" android:layout_weight="1" android:orientation="vertical" android:paddingStart="56dp">
-            <TextView android:id="@+id/title" android:layout_width="wrap_content" android:layout_height="wrap_content" android:ellipsize="end"
-                android:fontFamily="sans-serif-black" android:maxLines="2" android:textColor="@color/text" android:textSize="40sp"/>
-            <TextView android:id="@+id/tagline" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp"
-                android:fontFamily="sans-serif-light" android:textColor="@color/muted" android:textSize="16sp" android:textStyle="italic" android:visibility="gone"/>
-            <LinearLayout android:id="@+id/chips" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp"
-                android:gravity="center_vertical" android:orientation="horizontal"/>
-            <TextView android:id="@+id/meta" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="10dp"
-                android:ellipsize="end" android:maxLines="1" android:textColor="@color/muted" android:textSize="15sp"/>
-            <TextView android:id="@+id/overview" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp"
-                android:ellipsize="end" android:lineSpacingExtra="3dp" android:maxLines="4" android:textColor="#E6F5F6FA" android:textSize="16sp"/>
-            <TextView android:id="@+id/credits" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="10dp"
-                android:ellipsize="end" android:maxLines="1" android:textColor="@color/muted" android:textSize="14sp" android:visibility="gone"/>
-            <TextView android:id="@+id/notice" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp"
-                android:textColor="@color/gold" android:textSize="15sp" android:visibility="gone"/>
-            <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:orientation="horizontal">
-                <Button android:id="@+id/play" style="@style/LumenButton.Primary" android:drawableStart="@drawable/ic_play" android:text="Riproduci"/>
-                <Button android:id="@+id/restart" style="@style/LumenButton" android:drawableStart="@drawable/ic_replay" android:text="Dall'inizio" android:visibility="gone"/>
-                <Button android:id="@+id/myList" style="@style/LumenButton" android:drawableStart="@drawable/ic_add" android:text="La mia lista"/>
+    <!-- Scorre in verticale: con il telecomando si scende dai pulsanti al cast senza schiacciare nulla. -->
+    <ScrollView android:id="@+id/scroll" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true"
+        android:scrollbars="none" android:clipToPadding="false">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"
+            android:paddingTop="44dp" android:paddingBottom="28dp">
+            <LinearLayout android:layout_width="620dp" android:layout_height="wrap_content" android:orientation="vertical" android:paddingStart="56dp">
+                <TextView android:id="@+id/title" android:layout_width="wrap_content" android:layout_height="wrap_content" android:ellipsize="end"
+                    android:fontFamily="sans-serif-black" android:maxLines="2" android:textColor="@color/text" android:textSize="34sp"/>
+                <TextView android:id="@+id/tagline" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp"
+                    android:fontFamily="sans-serif-light" android:textColor="@color/muted" android:textSize="15sp" android:textStyle="italic" android:visibility="gone"/>
+                <LinearLayout android:id="@+id/chips" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp"
+                    android:gravity="center_vertical" android:orientation="horizontal"/>
+                <TextView android:id="@+id/meta" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="10dp"
+                    android:ellipsize="end" android:maxLines="1" android:textColor="@color/muted" android:textSize="14sp"/>
+                <TextView android:id="@+id/overview" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="10dp"
+                    android:ellipsize="end" android:lineSpacingExtra="2dp" android:maxLines="3" android:textColor="#E6F5F6FA" android:textSize="15sp"/>
+                <TextView android:id="@+id/credits" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp"
+                    android:ellipsize="end" android:maxLines="1" android:textColor="@color/muted" android:textSize="13sp" android:visibility="gone"/>
+                <TextView android:id="@+id/notice" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="10dp"
+                    android:textColor="@color/gold" android:textSize="14sp" android:visibility="gone"/>
+                <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="18dp"
+                    android:clipChildren="false" android:orientation="horizontal">
+                    <Button android:id="@+id/play" style="@style/LumenButton.Primary" android:drawableStart="@drawable/ic_play" android:text="Riproduci"/>
+                    <Button android:id="@+id/restart" style="@style/LumenButton" android:drawableStart="@drawable/ic_replay" android:text="Dall'inizio" android:visibility="gone"/>
+                    <Button android:id="@+id/myList" style="@style/LumenButton" android:drawableStart="@drawable/ic_add" android:text="La mia lista"/>
+                </LinearLayout>
             </LinearLayout>
-        </LinearLayout>
 
-        <TextView android:id="@+id/castTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="56dp"
-            android:fontFamily="sans-serif-medium" android:text="Cast" android:textColor="@color/text" android:textSize="18sp" android:visibility="gone"/>
-        <androidx.recyclerview.widget.RecyclerView android:id="@+id/cast" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:clipChildren="false" android:clipToPadding="false" android:paddingStart="48dp" android:paddingEnd="48dp" android:paddingTop="10dp"
-            android:paddingBottom="22dp" android:visibility="gone"/>
-    </LinearLayout>
+            <TextView android:id="@+id/castTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="56dp"
+                android:layout_marginTop="26dp" android:fontFamily="sans-serif-medium" android:text="Cast" android:textColor="@color/text" android:textSize="17sp"
+                android:visibility="gone"/>
+            <androidx.recyclerview.widget.RecyclerView android:id="@+id/cast" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:clipChildren="false" android:clipToPadding="false" android:paddingStart="48dp" android:paddingEnd="48dp" android:paddingTop="10dp"
+                android:paddingBottom="8dp" android:visibility="gone"/>
+        </LinearLayout>
+    </ScrollView>
 </FrameLayout>

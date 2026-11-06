@@ -134,15 +134,25 @@ class HomeActivity : ComponentActivity() {
                 progress.visibility = View.GONE
                 Toast.makeText(this@HomeActivity, "Carico la playlist…", Toast.LENGTH_SHORT).show()
             }
+            app.playlistLoading = true
+            app.playlistStatus = "Caricamento in corso…"
+            val started = System.currentTimeMillis()
             val items = try {
                 withContext(Dispatchers.Default) {
                     val list = repository.load(url)
                     app.setPlaylist(list, PlaylistIndex(list))
+                    val counts = list.groupingBy { it.kind }.eachCount()
+                    app.playlistStatus = "${list.size} voci: ${counts[MediaKind.LIVE] ?: 0} dirette, " +
+                        "${counts[MediaKind.MOVIE] ?: 0} film, ${counts[MediaKind.SERIES] ?: 0} episodi di serie" +
+                        " · ${list.map { it.group }.distinct().size} gruppi · pronta in ${(System.currentTimeMillis() - started) / 1000} s"
                     list
                 }
             } catch (e: Exception) {
+                app.playlistStatus = "Errore: ${e.message.orEmpty()}"
                 Toast.makeText(this@HomeActivity, "Non riesco a caricare la playlist", Toast.LENGTH_LONG).show()
                 emptyList()
+            } finally {
+                app.playlistLoading = false
             }
             progress.visibility = View.GONE
             playlistRows = withContext(Dispatchers.Default) { rowsOf(items) }
@@ -241,6 +251,8 @@ class HomeActivity : ComponentActivity() {
     }
 
     private fun emptyText(kind: MediaKind?): String = when {
+        kind == MediaKind.LIVE && app.playlistLoading -> "Sto caricando la playlist: le dirette compaiono tra qualche secondo."
+        kind == MediaKind.LIVE && prefs.playlistUrl.isNotBlank() -> "Nella playlist non ho riconosciuto dirette.\n${app.playlistStatus}"
         kind == MediaKind.LIVE -> "Le dirette arrivano dalla playlist: puoi aggiungerla in Impostazioni, anche dal telefono."
         !app.tmdb.isConfigured -> "Il catalogo non è disponibile: non trovo la chiave TMDB nella configurazione di Lumen. Controlla la connessione e riapri l'app."
         else -> "Non riesco a caricare il catalogo. Controlla la connessione e riapri l'app."

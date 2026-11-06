@@ -43,6 +43,10 @@ class LumenApp : Application(), ImageLoaderFactory {
     @Volatile var playlistIndex: PlaylistIndex = PlaylistIndex(emptyList())
         private set
 
+    /** Stato della playlist mostrato in Impostazioni e nella scheda Dirette. */
+    @Volatile var playlistStatus: String = ""
+    @Volatile var playlistLoading = false
+
     /** Da chiamare fuori dal thread principale: l'indice di una playlist grande richiede qualche secondo. */
     fun setPlaylist(items: List<PlaylistItem>, index: PlaylistIndex) {
         playlistIndex = index

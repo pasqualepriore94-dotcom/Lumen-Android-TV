@@ -21,6 +21,8 @@ class SettingsActivity : ComponentActivity() {
     /** Dopo l'invio dal telefono i campi mostrano i link ricevuti. */
     override fun onResume() {
         super.onResume()
+        val status = (application as LumenApp).playlistStatus
+        findViewById<TextView>(R.id.playlistStatus).text = if (status.isBlank()) "" else "Playlist: $status"
         fieldRefs?.let { (field, prefs) ->
             field.setText(prefs.playlistUrl)
             findViewById<EditText>(R.id.epgUrl).setText(prefs.epgUrl)

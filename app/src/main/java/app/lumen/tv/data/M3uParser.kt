@@ -10,7 +10,7 @@ object M3uParser {
     private val seriesGroup = Regex("""\bserie\b|\bseries\b""", RegexOption.IGNORE_CASE)
 
     /** Legge riga per riga, così anche le playlist molto grandi non occupano memoria inutile. */
-    fun parse(reader: BufferedReader, limit: Int = 50_000): List<PlaylistItem> {
+    fun parse(reader: BufferedReader, limit: Int = 120_000): List<PlaylistItem> {
         val items = ArrayList<PlaylistItem>()
         var info: String? = null
         var extGroup: String? = null

@@ -5,6 +5,7 @@
     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Impostazioni" android:textColor="@color/text" android:textSize="30sp" android:textStyle="bold" android:layout_marginBottom="24dp"/>
     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Indirizzo della playlist (.m3u), facoltativo" android:textColor="@color/muted" android:textSize="16sp" android:layout_marginBottom="8dp"/>
     <EditText android:id="@+id/playlistUrl" style="@style/LumenField" android:hint="https://…" android:inputType="textUri" android:imeOptions="actionDone"/>
+    <TextView android:id="@+id/playlistStatus" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="-6dp" android:layout_marginBottom="14dp" android:textColor="@color/muted" android:textSize="14sp"/>
     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Guida TV (XMLTV), facoltativa: se vuota si usa quella indicata nella playlist" android:textColor="@color/muted" android:textSize="16sp" android:layout_marginBottom="8dp"/>
     <EditText android:id="@+id/epgUrl" style="@style/LumenField" android:hint="https://…/guida.xml.gz" android:inputType="textUri" android:imeOptions="actionDone"/>
     <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal">
