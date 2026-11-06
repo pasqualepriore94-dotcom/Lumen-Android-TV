@@ -85,4 +85,21 @@ object TitleCleaner {
             .trim(' ', '-', '|', ':', '.')
         return title to found
     }
+
+    /** Forma confrontabile di un titolo: senza accenti, punteggiatura e maiuscole. */
+    fun key(title: String): String =
+        java.text.Normalizer.normalize(title, java.text.Normalizer.Form.NFD)
+            .lowercase()
+            .replace(Regex("""[^\p{L}\p{Nd}]"""), "")
+
+    /** Cerca nella playlist il titolo del catalogo, tollerando titoli italiani o originali. */
+    fun findInPlaylist(titles: List<String>, year: String?, kind: MediaKind, playlist: List<PlaylistItem>): PlaylistItem? {
+        val wanted = titles.map(::key).filter { it.isNotEmpty() }.toSet()
+        if (wanted.isEmpty()) return null
+        return playlist.firstOrNull { item ->
+            if (item.kind != kind) return@firstOrNull false
+            val (name, itemYear) = clean(item.name)
+            key(name) in wanted && (year == null || itemYear == null || year == itemYear)
+        }
+    }
 }

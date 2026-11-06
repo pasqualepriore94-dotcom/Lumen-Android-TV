@@ -7,6 +7,10 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import androidx.activity.ComponentActivity
+import androidx.lifecycle.lifecycleScope
+import app.lumen.tv.BuildConfig
+import app.lumen.tv.data.Updater
+import kotlinx.coroutines.launch
 import app.lumen.tv.LumenApp
 import app.lumen.tv.R
 import app.lumen.tv.data.AuthRepository
@@ -17,21 +21,37 @@ class SettingsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
         val prefs = Prefs(this)
-        val auth = AuthRepository((application as LumenApp).http, prefs)
+        val app = application as LumenApp
+        val auth = AuthRepository(app.http, prefs)
         val field = findViewById<EditText>(R.id.playlistUrl)
         val message = findViewById<TextView>(R.id.message)
         field.setText(prefs.playlistUrl)
 
         findViewById<Button>(R.id.save).setOnClickListener {
             val url = field.text.toString().trim()
-            if (!url.startsWith("http://") && !url.startsWith("https://")) {
-                message.text = "Inserisci un indirizzo che inizia con http:// o https://"
+            if (url.isNotEmpty() && !url.startsWith("http://") && !url.startsWith("https://")) {
+                message.text = "Inserisci un indirizzo che inizia con http:// o https://, oppure lascia vuoto"
                 return@setOnClickListener
             }
-            val wasEmpty = prefs.playlistUrl.isBlank()
             prefs.playlistUrl = url
-            if (wasEmpty) startActivity(Intent(this, HomeActivity::class.java))
             finish()
+        }
+
+        val updater = Updater(this, app.http)
+        findViewById<TextView>(R.id.version).text = "Lumen ${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})"
+        findViewById<Button>(R.id.checkUpdate).setOnClickListener {
+            message.text = "Controllo…"
+            lifecycleScope.launch {
+                try {
+                    val info = updater.check()
+                    if (info == null) message.text = "Nessun aggiornamento disponibile" else {
+                        message.text = ""
+                        promptUpdate(info, updater)
+                    }
+                } catch (e: Exception) {
+                    message.text = "Non riesco a controllare gli aggiornamenti"
+                }
+            }
         }
 
         findViewById<Button>(R.id.signOut).apply {

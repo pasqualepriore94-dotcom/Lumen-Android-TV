@@ -6,6 +6,8 @@ import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
+import app.lumen.tv.data.PlaylistItem
+import app.lumen.tv.data.TmdbClient
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
@@ -20,6 +22,11 @@ class LumenApp : Application(), ImageLoaderFactory {
     val isLowRam: Boolean by lazy {
         (getSystemService(ACTIVITY_SERVICE) as ActivityManager).isLowRamDevice
     }
+
+    val tmdb: TmdbClient by lazy { TmdbClient(http, isLowRam) }
+
+    /** Titoli della playlist caricata, usati per abbinarli al catalogo. */
+    @Volatile var playlist: List<PlaylistItem> = emptyList()
 
     /** Le immagini restano leggere: poca memoria, cache su disco limitata, colori a 16 bit dove possibile. */
     override fun newImageLoader(): ImageLoader = ImageLoader.Builder(this)

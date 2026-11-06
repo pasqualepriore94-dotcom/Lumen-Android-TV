@@ -11,61 +11,127 @@ import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import app.lumen.tv.LumenApp
 import app.lumen.tv.R
+import app.lumen.tv.data.MediaKind
 import app.lumen.tv.data.PlaylistItem
 import app.lumen.tv.data.Prefs
 import app.lumen.tv.data.TitleCleaner
-import app.lumen.tv.data.TmdbClient
+import app.lumen.tv.data.TmdbInfo
 import coil.load
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 class DetailActivity : ComponentActivity() {
-    private lateinit var url: String
+    private lateinit var app: LumenApp
     private lateinit var name: String
+    private lateinit var group: String
+    private lateinit var title: TextView
+    private lateinit var meta: TextView
+    private lateinit var overview: TextView
+    private lateinit var notice: TextView
+    private lateinit var backdrop: ImageView
     private lateinit var play: Button
     private lateinit var restart: Button
+    private lateinit var kind: MediaKind
+    private var source: String? = null
+    private var titles: List<String> = emptyList()
+    private var year: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_detail)
+        app = application as LumenApp
         name = intent.getStringExtra(EXTRA_NAME).orEmpty()
-        url = intent.getStringExtra(EXTRA_URL).orEmpty()
-        val logo = intent.getStringExtra(EXTRA_LOGO)
-        val group = intent.getStringExtra(EXTRA_GROUP).orEmpty()
+        group = intent.getStringExtra(EXTRA_GROUP).orEmpty()
+        kind = MediaKind.valueOf(intent.getStringExtra(EXTRA_KIND) ?: MediaKind.MOVIE.name)
+        source = intent.getStringExtra(EXTRA_URL)?.takeIf { it.isNotBlank() }
+        val isCatalog = source == null
 
-        val title = findViewById<TextView>(R.id.title)
-        val meta = findViewById<TextView>(R.id.meta)
-        val overview = findViewById<TextView>(R.id.overview)
-        val backdrop = findViewById<ImageView>(R.id.backdrop)
+        title = findViewById(R.id.title)
+        meta = findViewById(R.id.meta)
+        overview = findViewById(R.id.overview)
+        notice = findViewById(R.id.notice)
+        backdrop = findViewById(R.id.backdrop)
         play = findViewById(R.id.play)
         restart = findViewById(R.id.restart)
 
         title.text = TitleCleaner.clean(name).first.ifBlank { name }
         meta.text = group
-        logo?.let { backdrop.load(it) }
-        play.setOnClickListener { startActivity(PlayerActivity.intent(this, name, url, live = false, fromStart = false)) }
-        restart.setOnClickListener { startActivity(PlayerActivity.intent(this, name, url, live = false, fromStart = true)) }
+        intent.getStringExtra(EXTRA_LOGO)?.let { backdrop.load(it) }
+        play.setOnClickListener { onPlay(fromStart = false) }
+        restart.setOnClickListener { onPlay(fromStart = true) }
         play.requestFocus()
 
-        val app = application as LumenApp
-        lifecycleScope.launch {
-            val info = TmdbClient(app.http, app.isLowRam).lookup(name) ?: return@launch
-            title.text = info.title
-            overview.text = info.overview
-            meta.text = listOfNotNull(
-                info.year,
-                info.rating?.let { String.format(Locale.ITALY, "★ %.1f", it) },
-                group,
-            ).joinToString("  ·  ")
-            (info.backdrop ?: info.poster)?.let { backdrop.load(it) }
+        if (isCatalog) {
+            show(
+                TmdbInfo(
+                    title = name,
+                    originalTitle = intent.getStringExtra(EXTRA_ORIGINAL),
+                    overview = intent.getStringExtra(EXTRA_OVERVIEW).orEmpty(),
+                    poster = intent.getStringExtra(EXTRA_LOGO),
+                    backdrop = intent.getStringExtra(EXTRA_BACKDROP),
+                    year = intent.getStringExtra(EXTRA_YEAR),
+                    rating = intent.getDoubleExtra(EXTRA_RATING, 0.0).takeIf { it > 0 },
+                ),
+            )
+        } else {
+            lifecycleScope.launch { app.tmdb.lookup(name)?.let(::show) }
         }
     }
 
     override fun onResume() {
         super.onResume()
-        val saved = Prefs(this).position(url) > 0
-        play.text = if (saved) "Riprendi" else "Riproduci"
+        refreshButtons()
+        if (source == null && titles.isNotEmpty()) findSource()
+    }
+
+    private fun show(info: TmdbInfo) {
+        title.text = info.title
+        overview.text = info.overview
+        meta.text = listOfNotNull(
+            info.year,
+            info.rating?.let { String.format(Locale.ITALY, "★ %.1f", it) },
+            group,
+        ).joinToString("  ·  ")
+        (info.backdrop ?: info.poster)?.let { backdrop.load(it) }
+        if (source == null) {
+            titles = listOfNotNull(info.title, info.originalTitle)
+            year = info.year
+            findSource()
+        }
+    }
+
+    private fun findSource() {
+        lifecycleScope.launch {
+            source = withContext(Dispatchers.Default) {
+                TitleCleaner.findInPlaylist(titles, year, kind, app.playlist)
+            }?.url
+            refreshButtons()
+        }
+    }
+
+    private fun refreshButtons() {
+        val url = source
+        val saved = url != null && Prefs(this).position(url) > 0
+        notice.visibility = if (url == null) View.VISIBLE else View.GONE
+        if (url == null) {
+            val hasPlaylist = Prefs(this).playlistUrl.isNotBlank()
+            notice.text = if (hasPlaylist) "Questo titolo non è nella tua playlist." else "Per guardarlo serve una playlist."
+            play.text = if (hasPlaylist) "Cambia playlist" else "Aggiungi playlist"
+        } else {
+            play.text = if (saved) "Riprendi" else "Riproduci"
+        }
         restart.visibility = if (saved) View.VISIBLE else View.GONE
+    }
+
+    private fun onPlay(fromStart: Boolean) {
+        val url = source
+        if (url == null) {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        } else {
+            startActivity(PlayerActivity.intent(this, name, url, live = false, fromStart = fromStart))
+        }
     }
 
     companion object {
@@ -73,11 +139,23 @@ class DetailActivity : ComponentActivity() {
         private const val EXTRA_URL = "url"
         private const val EXTRA_LOGO = "logo"
         private const val EXTRA_GROUP = "group"
+        private const val EXTRA_KIND = "kind"
+        private const val EXTRA_ORIGINAL = "original"
+        private const val EXTRA_OVERVIEW = "overview"
+        private const val EXTRA_BACKDROP = "backdrop"
+        private const val EXTRA_YEAR = "year"
+        private const val EXTRA_RATING = "rating"
 
         fun intent(context: Context, item: PlaylistItem) = Intent(context, DetailActivity::class.java)
             .putExtra(EXTRA_NAME, item.name)
             .putExtra(EXTRA_URL, item.url)
             .putExtra(EXTRA_LOGO, item.logo)
             .putExtra(EXTRA_GROUP, item.group)
+            .putExtra(EXTRA_KIND, item.kind.name)
+            .putExtra(EXTRA_ORIGINAL, item.info?.originalTitle)
+            .putExtra(EXTRA_OVERVIEW, item.info?.overview)
+            .putExtra(EXTRA_BACKDROP, item.info?.backdrop)
+            .putExtra(EXTRA_YEAR, item.info?.year)
+            .putExtra(EXTRA_RATING, item.info?.rating ?: 0.0)
     }
 }

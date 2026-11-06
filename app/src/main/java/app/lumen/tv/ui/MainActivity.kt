@@ -7,7 +7,7 @@ import app.lumen.tv.LumenApp
 import app.lumen.tv.data.AuthRepository
 import app.lumen.tv.data.Prefs
 
-/** Sceglie la prima schermata: accesso, configurazione della playlist oppure Home. */
+/** Sceglie la prima schermata: accesso oppure Home. */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -15,7 +15,6 @@ class MainActivity : ComponentActivity() {
         val auth = AuthRepository((application as LumenApp).http, prefs)
         val next = when {
             auth.isConfigured && !auth.isSignedIn -> LoginActivity::class.java
-            prefs.playlistUrl.isBlank() -> SettingsActivity::class.java
             else -> HomeActivity::class.java
         }
         startActivity(Intent(this, next))

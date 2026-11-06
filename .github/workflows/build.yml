@@ -17,17 +17,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
-      - name: Prepara la firma
-        env:
-          KEYSTORE_B64: ${{ secrets.LUMEN_KEYSTORE_B64 }}
-        run: |
-          if [ -n "$KEYSTORE_B64" ]; then
-            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/lumen.jks"
-            echo "LUMEN_KEYSTORE_PATH=$RUNNER_TEMP/lumen.jks" >> "$GITHUB_ENV"
-          fi
       - name: Test e compilazione
         env:
-          LUMEN_KEYSTORE_PASSWORD: ${{ secrets.LUMEN_KEYSTORE_PASSWORD }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -37,3 +28,22 @@ jobs:
           name: Lumen-TV-apk
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+      - name: Pubblica l'aggiornamento per la TV
+        env:
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          BASE: https://sicpnokpgjqwnhzlznvm.supabase.co/storage/v1/object
+        run: |
+          if [ -z "$SERVICE_KEY" ]; then
+            echo "SUPABASE_SERVICE_KEY assente: pubblicazione saltata"
+            exit 0
+          fi
+          NAME=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          upload() {
+            curl --fail-with-body -sS -X POST "$BASE/lumen/android-tv/$2" \
+              -H "Authorization: Bearer $SERVICE_KEY" -H "x-upsert: true" \
+              -H "cache-control: max-age=60" -H "Content-Type: $3" --data-binary "@$1"
+          }
+          upload app/build/outputs/apk/release/app-release.apk Lumen-TV.apk application/vnd.android.package-archive
+          printf '{"versionCode":%s,"versionName":"%s","url":"%s/public/lumen/android-tv/Lumen-TV.apk?v=%s"}' \
+            "$GITHUB_RUN_NUMBER" "$NAME" "$BASE" "$GITHUB_RUN_NUMBER" > version.json
+          upload version.json version.json application/json

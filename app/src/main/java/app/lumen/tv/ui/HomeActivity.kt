@@ -6,6 +6,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -17,27 +18,27 @@ import app.lumen.tv.data.PlaylistItem
 import app.lumen.tv.data.PlaylistRepository
 import app.lumen.tv.data.Prefs
 import app.lumen.tv.data.Row
-import app.lumen.tv.data.TmdbClient
+import app.lumen.tv.data.Updater
 import kotlinx.coroutines.launch
 
 class HomeActivity : ComponentActivity() {
+    private lateinit var app: LumenApp
     private lateinit var prefs: Prefs
     private lateinit var repository: PlaylistRepository
-    private lateinit var tmdb: TmdbClient
     private lateinit var rows: RecyclerView
     private lateinit var progress: ProgressBar
     private lateinit var message: TextView
     private lateinit var tabs: Map<Button, MediaKind?>
-    private var items: List<PlaylistItem> = emptyList()
+    private var catalog: List<Row> = emptyList()
+    private var playlistRows: List<Row> = emptyList()
     private var loadedUrl: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_home)
-        val app = application as LumenApp
+        app = application as LumenApp
         prefs = Prefs(this)
         repository = PlaylistRepository(this, app.http, prefs)
-        tmdb = TmdbClient(app.http, app.isLowRam)
         rows = findViewById<RecyclerView>(R.id.rows).apply {
             layoutManager = LinearLayoutManager(this@HomeActivity)
             itemAnimator = null
@@ -54,6 +55,10 @@ class HomeActivity : ComponentActivity() {
         findViewById<Button>(R.id.settings).setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
+        val updater = Updater(this, app.http)
+        lifecycleScope.launch {
+            runCatching { updater.check() }.getOrNull()?.let { promptUpdate(it, updater) }
+        }
     }
 
     override fun onResume() {
@@ -66,29 +71,37 @@ class HomeActivity : ComponentActivity() {
         loadedUrl = url
         progress.visibility = View.VISIBLE
         message.visibility = View.GONE
-        rows.adapter = null
         lifecycleScope.launch {
-            try {
-                items = repository.load(url)
-                progress.visibility = View.GONE
-                val first = tabs.keys.first()
-                show(null, first)
-                first.requestFocus()
+            if (catalog.isEmpty()) catalog = app.tmdb.catalog()
+            val items = if (url.isBlank()) emptyList() else try {
+                repository.load(url)
             } catch (e: Exception) {
-                loadedUrl = null
-                progress.visibility = View.GONE
-                showMessage("Non riesco a caricare la playlist.\n${e.message.orEmpty()}\nControlla l'indirizzo in Impostazioni.")
-                findViewById<Button>(R.id.settings).requestFocus()
+                Toast.makeText(this@HomeActivity, "Non riesco a caricare la playlist", Toast.LENGTH_LONG).show()
+                emptyList()
             }
+            app.playlist = items
+            playlistRows = items.groupBy { it.group }.map { (group, list) -> Row(group, list.take(MAX_CARDS_PER_ROW)) }
+            progress.visibility = View.GONE
+            val first = tabs.keys.first()
+            show(null, first)
+            first.requestFocus()
         }
     }
 
     private fun show(kind: MediaKind?, selected: Button) {
         tabs.keys.forEach { it.isSelected = it == selected }
-        val visible = if (kind == null) items else items.filter { it.kind == kind }
-        val grouped = visible.groupBy { it.group }.map { (group, list) -> Row(group, list.take(MAX_CARDS_PER_ROW)) }
-        rows.adapter = RowsAdapter(grouped) { list -> CardAdapter(list, lifecycleScope, tmdb, ::open) }
-        if (grouped.isEmpty()) showMessage("Nessun contenuto in questa sezione.") else message.visibility = View.GONE
+        val visible = (catalog + playlistRows).mapNotNull { row ->
+            val items = if (kind == null) row.items else row.items.filter { it.kind == kind }
+            if (items.isEmpty()) null else Row(row.title, items)
+        }
+        rows.adapter = RowsAdapter(visible) { list -> CardAdapter(list, lifecycleScope, app.tmdb, ::open) }
+        if (visible.isEmpty()) showMessage(emptyText(kind)) else message.visibility = View.GONE
+    }
+
+    private fun emptyText(kind: MediaKind?): String = when {
+        kind == MediaKind.LIVE -> "Le dirette arrivano dalla playlist: puoi aggiungerla in Impostazioni."
+        !app.tmdb.isConfigured -> "Il catalogo non è ancora attivo: a questa versione manca la chiave TMDB."
+        else -> "Non riesco a caricare il catalogo. Controlla la connessione e riapri l'app."
     }
 
     private fun showMessage(text: String) {

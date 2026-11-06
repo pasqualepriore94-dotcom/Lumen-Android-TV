@@ -43,4 +43,11 @@ class M3uParserTest {
         assertEquals("Inception" to "2010", TitleCleaner.clean("IT | Inception (2010) [FHD]"))
         assertEquals("Dark" to null, TitleCleaner.clean("IT - Dark S01E02 HD"))
     }
+
+    @Test fun findsCatalogTitleInPlaylist() {
+        val found = TitleCleaner.findInPlaylist(listOf("Inception"), "2010", MediaKind.MOVIE, items)
+        assertEquals("http://host/movie/u/p/1.mkv", found?.url)
+        assertNull(TitleCleaner.findInPlaylist(listOf("Inception"), "1999", MediaKind.MOVIE, items))
+        assertNull(TitleCleaner.findInPlaylist(listOf("Inception"), null, MediaKind.SERIES, items))
+    }
 }

@@ -3,6 +3,9 @@ package app.lumen.tv.data
 import android.util.LruCache
 import app.lumen.tv.BuildConfig
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
@@ -33,37 +36,92 @@ class TmdbClient(private val http: OkHttpClient, lowRam: Boolean) {
         return info
     }
 
-    private fun search(title: String, year: String?): TmdbInfo? {
-        val url = "https://api.themoviedb.org/3/search/multi".toHttpUrl().newBuilder()
-            .addQueryParameter("api_key", BuildConfig.TMDB_API_KEY)
+    private fun request(path: String, params: Map<String, String>): JSONObject? {
+        val key = BuildConfig.TMDB_API_KEY
+        val url = "https://api.themoviedb.org/3/$path".toHttpUrl().newBuilder()
             .addQueryParameter("language", "it-IT")
-            .addQueryParameter("include_adult", "false")
-            .addQueryParameter("query", title)
-            .build()
-        http.newCall(Request.Builder().url(url).build()).execute().use { response ->
+        if (!key.startsWith("eyJ")) url.addQueryParameter("api_key", key)
+        params.forEach { (name, value) -> url.addQueryParameter(name, value) }
+        val request = Request.Builder().url(url.build())
+        if (key.startsWith("eyJ")) request.header("Authorization", "Bearer $key")
+        http.newCall(request.build()).execute().use { response ->
             if (!response.isSuccessful) return null
-            val results = JSONObject(response.body?.string() ?: return null).getJSONArray("results")
-            var best: JSONObject? = null
-            for (i in 0 until results.length()) {
-                val candidate = results.getJSONObject(i)
-                if (candidate.optString("media_type") == "person") continue
-                if (best == null) best = candidate
-                if (year != null && date(candidate).startsWith(year)) {
-                    best = candidate
-                    break
-                }
-            }
-            val found = best ?: return null
-            return TmdbInfo(
-                title = found.optString("title").ifBlank { found.optString("name") }.ifBlank { title },
-                overview = found.optString("overview"),
-                poster = image(found, "poster_path", posterSize),
-                backdrop = image(found, "backdrop_path", "w1280"),
-                year = date(found).take(4).ifBlank { null },
-                rating = found.optDouble("vote_average").takeIf { !it.isNaN() && it > 0 },
-            )
+            return JSONObject(response.body?.string() ?: return null)
         }
     }
+
+    private fun search(title: String, year: String?): TmdbInfo? {
+        val results = request("search/multi", mapOf("include_adult" to "false", "query" to title))
+            ?.getJSONArray("results") ?: return null
+        var best: JSONObject? = null
+        for (i in 0 until results.length()) {
+            val candidate = results.getJSONObject(i)
+            if (candidate.optString("media_type") == "person") continue
+            if (best == null) best = candidate
+            if (year != null && date(candidate).startsWith(year)) {
+                best = candidate
+                break
+            }
+        }
+        return best?.let(::parse)
+    }
+
+    private fun parse(found: JSONObject) = TmdbInfo(
+        title = found.optString("title").ifBlank { found.optString("name") },
+        originalTitle = found.optString("original_title").ifBlank { found.optString("original_name") }.ifBlank { null },
+        overview = found.optString("overview"),
+        poster = image(found, "poster_path", posterSize),
+        backdrop = image(found, "backdrop_path", "w1280"),
+        year = date(found).take(4).ifBlank { null },
+        rating = found.optDouble("vote_average").takeIf { !it.isNaN() && it > 0 },
+    )
+
+    private class Section(
+        val title: String,
+        val path: String,
+        val kind: MediaKind?,
+        val params: Map<String, String> = emptyMap(),
+    )
+
+    /** Righe del catalogo; una sezione che non si carica viene semplicemente saltata. */
+    suspend fun catalog(): List<Row> {
+        if (!isConfigured) return emptyList()
+        return coroutineScope {
+            sections.map { section -> async(Dispatchers.IO) { runCatching { load(section) }.getOrNull() } }
+                .awaitAll()
+                .filterNotNull()
+                .filter { it.items.isNotEmpty() }
+        }
+    }
+
+    private fun load(section: Section): Row {
+        val results = request(section.path, section.params + ("region" to "IT"))?.getJSONArray("results")
+        val items = ArrayList<PlaylistItem>()
+        for (i in 0 until (results?.length() ?: 0)) {
+            val json = results!!.getJSONObject(i)
+            val kind = section.kind ?: when (json.optString("media_type")) {
+                "movie" -> MediaKind.MOVIE
+                "tv" -> MediaKind.SERIES
+                else -> null
+            } ?: continue
+            val info = parse(json)
+            if (info.poster == null || info.title.isBlank()) continue
+            items += PlaylistItem(info.title, "", section.title, info.poster, kind, info)
+        }
+        return Row(section.title, items)
+    }
+
+    private val sections = listOf(
+        Section("Di tendenza", "trending/all/week", null),
+        Section("Film popolari", "movie/popular", MediaKind.MOVIE),
+        Section("Serie popolari", "tv/popular", MediaKind.SERIES),
+        Section("Film più votati", "movie/top_rated", MediaKind.MOVIE),
+        Section("Serie più votate", "tv/top_rated", MediaKind.SERIES),
+        Section("Azione", "discover/movie", MediaKind.MOVIE, mapOf("with_genres" to "28")),
+        Section("Commedia", "discover/movie", MediaKind.MOVIE, mapOf("with_genres" to "35")),
+        Section("Fantascienza", "discover/movie", MediaKind.MOVIE, mapOf("with_genres" to "878")),
+        Section("Serie crime", "discover/tv", MediaKind.SERIES, mapOf("with_genres" to "80")),
+    )
 
     private fun date(json: JSONObject) =
         json.optString("release_date").ifBlank { json.optString("first_air_date") }
