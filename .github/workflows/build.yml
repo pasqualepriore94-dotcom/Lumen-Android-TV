@@ -1,0 +1,39 @@
+name: Compila APK
+on:
+  push:
+    branches: [main, "tappa-*"]
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Prepara la firma
+        env:
+          KEYSTORE_B64: ${{ secrets.LUMEN_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/lumen.jks"
+            echo "LUMEN_KEYSTORE_PATH=$RUNNER_TEMP/lumen.jks" >> "$GITHUB_ENV"
+          fi
+      - name: Test e compilazione
+        env:
+          LUMEN_KEYSTORE_PASSWORD: ${{ secrets.LUMEN_KEYSTORE_PASSWORD }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: gradle --no-daemon testReleaseUnitTest assembleRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Lumen-TV-apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error

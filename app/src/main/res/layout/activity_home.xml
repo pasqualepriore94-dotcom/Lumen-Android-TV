@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="48dp" android:paddingEnd="48dp" android:paddingTop="24dp" android:paddingBottom="8dp">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginEnd="28dp" android:text="Lumen" android:textColor="@color/accent" android:textSize="26sp" android:textStyle="bold"/>
+        <Button android:id="@+id/tabAll" style="@style/LumenButton" android:text="Tutti"/>
+        <Button android:id="@+id/tabMovies" style="@style/LumenButton" android:text="Film"/>
+        <Button android:id="@+id/tabSeries" style="@style/LumenButton" android:text="Serie"/>
+        <Button android:id="@+id/tabLive" style="@style/LumenButton" android:text="Dirette"/>
+        <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1"/>
+        <Button android:id="@+id/settings" style="@style/LumenButton" android:layout_marginEnd="0dp" android:text="Impostazioni"/>
+    </LinearLayout>
+    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+        <androidx.recyclerview.widget.RecyclerView android:id="@+id/rows" android:layout_width="match_parent" android:layout_height="match_parent" android:clipToPadding="false" android:paddingBottom="32dp"/>
+        <ProgressBar android:id="@+id/progress" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center"/>
+        <TextView android:id="@+id/message" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center" android:gravity="center" android:padding="48dp" android:textColor="@color/muted" android:textSize="18sp" android:visibility="gone"/>
+    </FrameLayout>
+</LinearLayout>
