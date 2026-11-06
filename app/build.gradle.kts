@@ -14,7 +14,7 @@ android {
         minSdk = 23
         targetSdk = 34
         versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
-        versionName = "0.3.0"
+        versionName = "0.3.1"
         buildConfigField("String", "UPDATE_URL", "\"https://sicpnokpgjqwnhzlznvm.supabase.co/storage/v1/object/public/lumen/android-tv/version.json\"")
         buildConfigField("String", "TMDB_API_KEY", "\"${secret("TMDB_API_KEY")}\"")
         buildConfigField("String", "CONFIG_URL", "\"https://sicpnokpgjqwnhzlznvm.supabase.co/storage/v1/object/public/lumen/app-config.json\"")
